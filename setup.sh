@@ -4,18 +4,23 @@ if [[ $0 == $BASH_SOURCE ]]; then
     echo "Please source this script."
     exit 1
 fi
+export TRKALIGN_BASE=`cd "$(dirname ${BASH_SOURCE})" >/dev/null 2>&1 && /bin/pwd`
 
-if [ -z ${MU2E_BASE_RELEASE} ]; then
-    echo "You must first set up a release."
-    return 1
-fi
-
-export TRKALIGN_SCRIPTS_DIR="${MU2E_BASE_RELEASE}/TrackerAlignment/scripts"
+export TRKALIGN_SCRIPTS_DIR="${TRKALIGN_BASE}/scripts"
 export DS_COSMIC_NOFIELD_ALIGNSELECT="/pnfs/mu2e/persistent/users/mu2epro/MDC2020Dev/DS-cosmic-nofield-alignselect/sources.txt"
 
 setup millepede
 
-# python -m pip install --user -r ${TRKALIGN_SCRIPTS_DIR}/requirements.txt
+if [ ! -d "${TRKALIGN_BASE}/.venv" ]; then
+    echo "Creating virtual environment at ${TRKALIGN_BASE}/.venv"
+    python -m venv ${TRKALIGN_BASE}/.venv 
+    source ${TRKALIGN_BASE}/.venv/bin/activate
+
+    python -m pip install -r ${TRKALIGN_BASE}/scripts/requirements.txt
+else
+    echo "Sourcing virtual environment at ${TRKALIGN_BASE}/.venv"
+    source ${TRKALIGN_BASE}/.venv/bin/activate
+fi
 
 # set up some convenience commands 
 
@@ -97,7 +102,7 @@ function mu2ealign_mergeoutput() {
     fi
 
     if [ ! -f "mp-steer.txt" ]; then
-        python ${MU2E_BASE_RELEASE}/TrackerAlignment/scripts/mergesteer.py mp-steer.txt.* > mp-steer.txt
+        python ${TRKALIGN_BASE}/scripts/mergesteer.py mp-steer.txt.* > mp-steer.txt
     else
         echo "mp-steer.txt already exists - skip"
     fi
@@ -110,7 +115,7 @@ function mu2ealign_mergeoutput() {
 }
 
 function mu2ealign_genjobfcl() {
-    cp ${MU2E_BASE_RELEASE}/TrackerAlignment/fcl/job_template.fcl job.fcl
+    cp ${TRKALIGN_BASE}/fcl/job_template.fcl job.fcl
     echo "Generated new job.fcl!"
     echo "Using DS_COSMIC_NOFIELD_ALIGNSELECT as dataset. ( 8 files )"
     echo "Please change sources.txt if you want to use something else."
@@ -189,7 +194,7 @@ function mu2ealign_runNaligniters() {
         cd nominal 
         echo "Working directory: $(pwd)"
 
-        mu2ealign new ${MU2E_BASE_RELEASE}/TrackerAlignment/test/misalignments/nominal.txt
+        mu2ealign new ${TRKALIGN_BASE}/test/misalignments/nominal.txt
 
         rm *.fcl 
         rm sources*.txt 
@@ -233,7 +238,7 @@ function mu2ealign() {
         ALIGN_CONST_FILE=$2
 
         if [ ! -f "${ALIGN_CONST_FILE}" ]; then
-            TESTFILE="${MU2E_BASE_RELEASE}/TrackerAlignment/test/misalignments/$2.txt"
+            TESTFILE="${TRKALIGN_BASE}/test/misalignments/$2.txt"
             if [ -f "${TESTFILE}" ]; then 
                 ALIGN_CONST_FILE=${TESTFILE}
 
@@ -244,7 +249,7 @@ function mu2ealign() {
             fi
         fi
 
-        git -C ${MU2E_BASE_RELEASE} log -1 | tee revision.txt
+        git -C ${TRKALIGN_BASE} log -1 | tee revision.txt
 
         cp ${ALIGN_CONST_FILE} alignconstants_in.txt
 
@@ -296,6 +301,10 @@ function mu2ealign() {
         echo "mu2ealign new <path to alignment constants txt file>: create a new alignment working directory using specified alignment constants"
         echo "mu2ealign run: start the alignment track collection in the current working directory"
         echo "mu2ealign pede: check jobs have completed, merge results if needed and run PEDE. Produce new alignment constants"
+    else
+        echo "Unrecognised command $COMMAND... Try "
+        echo "    $ mu2ealign help"
+        echo ""
     fi
 }
 
