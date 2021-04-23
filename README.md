@@ -25,9 +25,9 @@ source <Offline release>/setup.sh
 2. Set up a TrackerAlignment helper environment.
 Note that you may also need to install some python packages using pip for the plotting scripts to work.
 ```bash
-source ${MU2E_BASE_RELEASE}/TrackerAlignment/scripts/setup.sh
+source setup.sh
 
-python -m pip install --user -r ${MU2E_BASE_RELEASE}/TrackerAlignment/scripts/requirements.txt
+python -m pip install --user -r ${TRKALIGN_BASE}/scripts/requirements.txt
 ```
 
 2. Choose a working directory and setup your starting misalignment
@@ -41,7 +41,7 @@ mu2ealign new MT_MDC2018_Fix5_30
 ```
 This command generates job.fcl, alignconstants_in.txt, revision.txt, and sources.txt. This is effectively a working directory for one alignment iteration. This also saves the Mu2e Offline revision at the time of generation.
 
-The Tracker is misaligned according to the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${MU2E_BASE_RELEASE}/TrackerAlignment/test/misalignments/` is copied.
+The Tracker is misaligned according to the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied.
 
 It's important to choose which planes to fix in the alignment, in order to suppress weak modes, such as a stretch or squeeze in z.
 Fixing planes 5, 30 to zero in all DOFs, for example. This means changing the values accordingly in `alignconstants_in.txt` for Plane 5 + 30, and ensuring that these parameters are set in `job.fcl`:
@@ -94,7 +94,7 @@ aligntrack_display TrackDiag.root < other trackdiag.root files to compare agains
 
 
 # plot and show shifts and pulls
-python ${MU2E_BASE_RELEASE}/TrackerAlignment/scripts/make_shiftplot.py "First Run" alignconstants_out.txt "Second Run" iter1/alignconstants_out.txt
+python ${TRKALIGN_BASE}/scripts/make_shiftplot.py "First Run" alignconstants_out.txt "Second Run" iter1/alignconstants_out.txt
 ```
 
 
