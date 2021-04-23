@@ -11,17 +11,20 @@ export DS_COSMIC_NOFIELD_ALIGNSELECT="/pnfs/mu2e/persistent/users/mu2epro/MDC202
 
 setup millepede
 
-if [ ! -d "${TRKALIGN_BASE}/.venv" ]; then
-    echo "Creating virtual environment at ${TRKALIGN_BASE}/.venv"
-    python -m venv ${TRKALIGN_BASE}/.venv 
-    source ${TRKALIGN_BASE}/.venv/bin/activate
+if [ ! -f "${TRKALIGN_BASE}/.no-venv" ]; then
+    if [ ! -d "${TRKALIGN_BASE}/.venv" ]; then
+        echo "Creating virtual environment at ${TRKALIGN_BASE}/.venv"
+        python -m venv ${TRKALIGN_BASE}/.venv 
+        source ${TRKALIGN_BASE}/.venv/bin/activate
 
-    python -m pip install -r ${TRKALIGN_BASE}/scripts/requirements.txt
+        python -m pip install -r ${TRKALIGN_BASE}/scripts/requirements.txt
+    else
+        echo "Sourcing virtual environment at ${TRKALIGN_BASE}/.venv"
+        source ${TRKALIGN_BASE}/.venv/bin/activate
+    fi
 else
-    echo "Sourcing virtual environment at ${TRKALIGN_BASE}/.venv"
-    source ${TRKALIGN_BASE}/.venv/bin/activate
+    echo "Skipped virtual environment setup."
 fi
-
 # set up some convenience commands 
 
 alias aligntrack_display='python ${TRKALIGN_SCRIPTS_DIR}/aligntrack_display.py ' 
