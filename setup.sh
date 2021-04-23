@@ -308,6 +308,8 @@ function mu2ealign() {
         echo "Unrecognised command $COMMAND... Try "
         echo "    $ mu2ealign help"
         echo ""
+        echo "Also check out the README at https://github.com/Mu2e/TrackerAlignment"
+        echo ""
     fi
 }
 
