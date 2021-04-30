@@ -1,0 +1,2 @@
+# don't include an ENVSET recommendaiton since this will always be built 
+# with an Offline and should use its defaults
