@@ -18,11 +18,11 @@
 #include <utility>       // for move
 #include <vector>        // for vector<>:...
 
-#include "CosmicReco/inc/PDFFit.hh"
-#include "GeneralUtilities/inc/BitMap.hh"
-#include "GeometryService/inc/GeomHandle.hh"
+#include "Offline/CosmicReco/inc/PDFFit.hh"
+#include "Offline/GeneralUtilities/inc/BitMap.hh"
+#include "Offline/GeometryService/inc/GeomHandle.hh"
 #include "Minuit2/MnUserCovariance.h"
-#include "Mu2eUtilities/inc/TwoLinePCA.hh"
+#include "Offline/Mu2eUtilities/inc/TwoLinePCA.hh"
 
 #include "boost/math/distributions/chi_squared.hpp"
 #include "boost/math/distributions/normal.hpp"
@@ -35,22 +35,22 @@
 #include "art/Framework/Services/Registry/ServiceHandle.h" // for ServiceHa...
 #include "art_root_io/TFileService.h"                      // for TFileService
 
-#include "TrackerConditions/inc/StrawResponse.hh" // for StrawResp...
-#include "TrackerGeom/inc/Panel.hh"               // for Panel
-#include "TrackerGeom/inc/Plane.hh"               // for Plane
-#include "TrackerGeom/inc/Straw.hh"               // for Straw
-#include "TrackerGeom/inc/Tracker.hh"             // for Tracker
+#include "Offline/TrackerConditions/inc/StrawResponse.hh" // for StrawResp...
+#include "Offline/TrackerGeom/inc/Panel.hh"               // for Panel
+#include "Offline/TrackerGeom/inc/Plane.hh"               // for Plane
+#include "Offline/TrackerGeom/inc/Straw.hh"               // for Straw
+#include "Offline/TrackerGeom/inc/Tracker.hh"             // for Tracker
 
-#include "ProditionsService/inc/ProditionsHandle.hh" // for Prodition...
-#include "RecoDataProducts/inc/ComboHit.hh"          // for ComboHit
-#include "RecoDataProducts/inc/CosmicTrack.hh"       // for CosmicTrack
-#include "RecoDataProducts/inc/CosmicTrackSeed.hh"   // for CosmicTra...
-#include "RecoDataProducts/inc/TrkFitFlag.hh"        // for TrkFitFlag
+#include "Offline/ProditionsService/inc/ProditionsHandle.hh" // for Prodition...
+#include "Offline/RecoDataProducts/inc/ComboHit.hh"          // for ComboHit
+#include "Offline/RecoDataProducts/inc/CosmicTrack.hh"       // for CosmicTrack
+#include "Offline/RecoDataProducts/inc/CosmicTrackSeed.hh"   // for CosmicTra...
+#include "Offline/RecoDataProducts/inc/TrkFitFlag.hh"        // for TrkFitFlag
 
-#include "DataProducts/inc/StrawId.hh" // for StrawId
-#include "DataProducts/inc/XYZVec.hh"  // for toXYZVec
+#include "Offline/DataProducts/inc/StrawId.hh" // for StrawId
+#include "Offline/DataProducts/inc/XYZVec.hh"  // for toXYZVec
 
-#include "Mu2eUtilities/inc/TwoLinePCA_XYZ.hh" // for TwoLinePC...
+#include "Offline/Mu2eUtilities/inc/TwoLinePCA_XYZ.hh" // for TwoLinePC...
 
 #include "RtypesCore.h"
 #include "TAxis.h" // for TAxis

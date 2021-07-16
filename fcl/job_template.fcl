@@ -1,5 +1,5 @@
-#include "JobConfig/alignment/collect_nofield_cosmictracks.fcl"
-#include "JobConfig/reco/misalign_epilog.fcl"
+#include "Production/JobConfig/alignment/collect_nofield_cosmictracks.fcl"
+#include "Production/JobConfig/reco/misalign_epilog.fcl"
 
 services.ProditionsService.alignedTracker.useDb: true
 services.ProditionsService.alignedTracker.verbose: 2
