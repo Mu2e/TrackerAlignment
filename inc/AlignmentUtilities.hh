@@ -3,24 +3,24 @@
 // ryunoneil@gmail.com
 
 #include "CLHEP/Vector/ThreeVector.h"
-#include "Mu2eUtilities/inc/TwoLinePCA.hh"
+#include "Offline/Mu2eUtilities/inc/TwoLinePCA.hh"
 #include "RtypesCore.h"
 #include "TTree.h"
 
 // art
-#include "TrackerConditions/inc/StrawResponse.hh"
+#include "Offline/TrackerConditions/inc/StrawResponse.hh"
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "art_root_io/TFileService.h"
 
 // Offline
 
-#include "DataProducts/inc/StrawId.hh"
+#include "Offline/DataProducts/inc/StrawId.hh"
 
-#include "RecoDataProducts/inc/ComboHit.hh"
-#include "RecoDataProducts/inc/CosmicTrackSeed.hh"
+#include "Offline/RecoDataProducts/inc/ComboHit.hh"
+#include "Offline/RecoDataProducts/inc/CosmicTrackSeed.hh"
 
-#include "DbTables/inc/TrkAlignParams.hh"
-#include "DbTables/inc/TrkStrawEndAlign.hh"
+#include "Offline/DbTables/inc/TrkAlignParams.hh"
+#include "Offline/DbTables/inc/TrkStrawEndAlign.hh"
 
 #include "TrackerAlignment/inc/AlignmentDerivatives.hh"
 #include "TrackerAlignment/inc/MilleDataWriter.hh"
