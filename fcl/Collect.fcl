@@ -1,0 +1,60 @@
+# Ryunosuke O'Neil
+# roneil@fnal.gov
+# https://github.com/ryuwd
+#
+# Reconstruct Cosmic Track (Straight, no magnetic field)
+# Check Cuts Pass (see Alignment/fcl/prolog.fcl)
+# Write alignment (mille) data to file. This file can be fed then to Millepede.
+
+#include "Offline/fcl/minimalMessageService.fcl"
+#include "Offline/fcl/standardProducers.fcl"
+#include "Offline/fcl/standardServices.fcl"
+#include "Production/JobConfig/reco/prolog.fcl"
+#include "Offline/CosmicReco/fcl/prolog.fcl"
+#include "TrackerAlignment/fcl/prolog.fcl"
+
+process_name : CosmicTimeFit
+
+source : { module_type : RootInput }
+
+services : @local::Services.Reco
+
+physics :
+{
+  producers : {
+    @table::Reconstruction.producers
+    @table::CommonMC.producers
+    @table::CosmicTracking.producers
+  }
+  filters : {
+    @table::Reconstruction.filters
+    @table::CosmicTracking.filters
+  }
+  analyzers : {
+    @table::Reconstruction.analyzers
+    @table::CosmicTracking.analyzers
+    AlignTrackCollector : { @table::AlignTrackCollector }
+  }
+  RecoPath : [ @sequence::TrkHitReco.PrepareHits, SimpleTimeCluster, LineFinder, CosmicTrackFinderTimeFit ]
+  EndPath : [ AlignTrackCollector ]
+}
+
+outputs : {
+  Output : @local::Reconstruction.Output
+}
+
+#include "Production/JobConfig/reco/epilog.fcl"
+#include "Production/JobConfig/reco/offspill_epilog.fcl"
+
+services.TFileService.fileName : "nts.owner.RecoMCTrig.version.sequencer.root"
+outputs.Output.fileName : "mcs.owner.RecoMCTrig.version.sequencer.art"
+physics.end_paths : [EndPath]
+
+services.scheduler.wantSummary : true
+
+# these lines are needed to improve performance
+services.ProditionsService.strawResponse.useParameterizedDriftErrors : true
+physics.producers.makePH.TestRadius : false
+physics.producers.makePH.TestFlag : false
+
+physics.analyzers.AlignTrackCollector.CosmicTrackSeedCollection : CosmicTrackFinderTimeFit

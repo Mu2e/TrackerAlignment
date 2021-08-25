@@ -48,9 +48,6 @@
 #include "Offline/RecoDataProducts/inc/TrkFitFlag.hh"        // for TrkFitFlag
 
 #include "Offline/DataProducts/inc/StrawId.hh" // for StrawId
-#include "Offline/DataProducts/inc/XYZVec.hh"  // for toXYZVec
-
-#include "Offline/Mu2eUtilities/inc/TwoLinePCA_XYZ.hh" // for TwoLinePC...
 
 #include "RtypesCore.h"
 #include "TAxis.h" // for TAxis

@@ -255,6 +255,8 @@ function mu2ealign() {
         git -C ${TRKALIGN_BASE} log -1 | tee revision.txt
 
         cp ${ALIGN_CONST_FILE} alignconstants_in.txt
+        cp ${TRKALIGN_BASE}/scripts/env.sh .
+        source env.sh
 
         JOB_FCL_FILE=$(dirname ${ALIGN_CONST_FILE})/job.fcl
 
