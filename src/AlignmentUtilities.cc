@@ -306,7 +306,7 @@ namespace {
 
     TrkAlignParams align_tracker{strawId, StrawIdMask::tracker, 0, 0, 0, 0, 0, 0};
     TrkAlignParams align_plane{strawId, StrawIdMask::plane, globals[0], globals[1], globals[2], globals[3], globals[4], globals[5]};
-    TrkAlignParams align_panel{strawId, StrawIdMask::panel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]};
+    TrkAlignParams align_panel{strawId, StrawIdMask::uniquepanel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]};
     TrkStrawEndAlign align_straw{strawId.uniqueStraw(), strawId, 0,0,0,0,0,0,0,0}; // not sure how to really initialize this FIXME!
 
     // returns pair of vectors { straw_pos, straw_dir }
@@ -330,7 +330,7 @@ namespace {
 // this function should be consolidated with the above FIXME!
     TrkAlignParams align_tracker{strawId, StrawIdMask::tracker, 0, 0, 0, 0, 0, 0};
     TrkAlignParams align_plane{strawId, StrawIdMask::plane, globals[0], globals[1], globals[2], globals[3], globals[4], globals[5]};
-    TrkAlignParams align_panel{strawId, StrawIdMask::panel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]}; 
+    TrkAlignParams align_panel{strawId, StrawIdMask::uniquepanel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]}; 
     TrkStrawEndAlign align_straw{strawId.uniqueStraw(), strawId, 0,0,0,0,0,0,0,0}; // not sure how to really initialize this FIXME!
     // returns pair of vectors { straw_pos, straw_dir }
     Hep3Vector straw_pos, straw_dir;

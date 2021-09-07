@@ -39,7 +39,7 @@ cd alignment-test
 mu2ealign new MT_MDC2018_Fix5_30
 
 ```
-This command generates job.fcl, alignconstants_in.txt, revision.txt, and sources.txt. This is effectively a working directory for one alignment iteration. This also saves the Mu2e Offline revision at the time of generation.
+This command generates job.fcl, alignconstants_in.txt, revision.txt, and sources.txt. This is effectively a working directory for one alignment iteration. This also saves the Mu2e Offline revision at the time of generation. The file env.sh is also created which when sourced will add the current directory to your MU2E_SEARCH_PATH so that alignment files placed here are found by Offline.
 
 The Tracker is misaligned according to the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied.
 

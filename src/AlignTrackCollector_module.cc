@@ -57,7 +57,6 @@
 #include "Offline/RecoDataProducts/inc/TrkFitFlag.hh"
 
 #include "Offline/DataProducts/inc/StrawId.hh"
-#include "Offline/DataProducts/inc/XYZVec.hh"
 
 #include "TAxis.h"
 #include "TH1F.h"

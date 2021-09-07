@@ -7,11 +7,12 @@
 import io, sys
 
 class AlignmentTable:
-    def __init__(self, table, class_id, objects, ndof):
+    def __init__(self, table, class_id, objects, ndof, stride):
         self.table = table
         self.nobjects = objects
         self.ndof = ndof
         self.classid = class_id
+        self.stride = stride
 
         self.constants = []
         self.errors = []
@@ -31,6 +32,13 @@ class AlignmentTable:
     
     def mplabel(self, id, dof):
         return 10000 * self.classid + 10 * id + dof
+
+    def strawId(self, index):
+        uniquestraw = index*self.stride
+        plane = int(uniquestraw/(6*96))
+        panel = int(uniquestraw/96)%6
+        straw = uniquestraw%96
+        return "%d_%d_%d" % (plane,panel,straw)
     
     def setConstant(self, id, dof, value):
         self.constants[id][dof] = float(value)
@@ -41,7 +49,7 @@ class AlignmentTable:
     def to_proditions_table(self):
         lines = []
         for i, constants in enumerate(self.constants):
-            lines.append('%d,' % i + ','.join([str(i) for i in constants]))
+            lines.append('%d,' % i + self.strawId(i) + ',' +  ','.join([str(i) for i in constants]))
         return """TABLE {name}
 {csv}
 
@@ -55,9 +63,11 @@ class AlignmentConstants:
     section_keyword = "TABLE"
     
     def __init__(self):
-        self.tables = {'TrkAlignTracker': AlignmentTable('TrkAlignTracker', 0, 1, 6), 
-                'TrkAlignPlane': AlignmentTable('TrkAlignPlane', 1, 36, 6), 
-                'TrkAlignPanel': AlignmentTable('TrkAlignPanel', 2, 216, 6)}
+        self.tables = {'TrkAlignTracker': AlignmentTable('TrkAlignTracker', 0, 1, 6, 0), 
+                'TrkAlignPlane': AlignmentTable('TrkAlignPlane', 1, 36, 6, 6*96), 
+                'TrkAlignPanel': AlignmentTable('TrkAlignPanel', 2, 216, 6, 96),
+                'TrkAlignStraw': AlignmentTable('TrkAlignStraw', 3, 20736, 8, 1)}
+                
 
     def read_db_file(self, input_file):
         section_name = ''
