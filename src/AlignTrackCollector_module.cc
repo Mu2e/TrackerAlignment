@@ -101,10 +101,17 @@ private:
   Float_t doca_resid_err[MAX_NHITS];
   Float_t drift_reso[MAX_NHITS];
 
+  Float_t ddx[MAX_NHITS];
+  Float_t ddy[MAX_NHITS];
+  Float_t ddz[MAX_NHITS];
+
+  bool bad_track;
+
   Float_t pull_doca[MAX_NHITS];
   Float_t pull_hittime[MAX_NHITS];
 
   Float_t doca[MAX_NHITS];
+  Float_t ct_doca[MAX_NHITS];
   Float_t time[MAX_NHITS];
   Int_t plane_uid[MAX_NHITS];
   Int_t panel_uid[MAX_NHITS];
@@ -126,6 +133,8 @@ private:
 public:
   size_t _dof_per_plane = 6; // dx, dy, dz, a, b, g (translation, rotation)
   size_t _dof_per_panel = 6; // dx, dy, dz, a, b, g (translation, rotation)
+  size_t _used_dof_per_plane = 6;
+  size_t _used_dof_per_panel = 5;
   size_t _ndof = StrawId::_nplanes * _dof_per_plane + StrawId::_nupanels * _dof_per_panel;
   size_t _expected_dofs = _dof_per_panel + _dof_per_plane;
 
@@ -164,6 +173,7 @@ public:
         true};
 
     fhicl::Atom<bool> nopaneldofs{Name("NoPanelDOFs"), Comment("remove panel DOFs"), true};
+    fhicl::Atom<bool> noplanedofs{Name("NoPlaneDOFs"), Comment("remove plane DOFs"), false};
 
     fhicl::Atom<bool> noplanerotations{Name("NoPlaneRotations"),
                                        Comment("Remove Plane rotation DOFs"), true};
@@ -175,6 +185,10 @@ public:
     fhicl::Sequence<int> fixplane{
         Name("FixPlane"),
         Comment("Planes to fix. The parameters are fixed to the proditions value."),
+    };
+    fhicl::Sequence<int> fixpanel{
+        Name("FixPanel"),
+        Comment("Panels to fix. The parameters are fixed to the proditions value."),
     };
 
     fhicl::Atom<std::string> millefile{Name("MilleFile"),
@@ -228,6 +242,7 @@ public:
   int min_track_hits;
   bool use_timeresid;
   bool no_panel_dofs;
+  bool no_plane_dofs;
   bool no_plane_rotations;
   bool use_db;
 
@@ -248,6 +263,7 @@ public:
 
   std::string constrain_strat;
   std::vector<int> fixed_planes;
+  std::vector<int> fixed_panels;
   
 
   const CosmicTrackSeedCollection* _coscol;
@@ -272,6 +288,7 @@ public:
   int getLabel(int const&, int const&, int const&);
   std::vector<int> generateDOFLabels(uint16_t plane, uint16_t panel);
   std::vector<int> generateDOFLabels(StrawId const& strw);
+  std::vector<double> fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal);
 
   void writeMillepedeSteering();
   void writeMillepedeConstraints();
@@ -293,6 +310,7 @@ public:
       min_track_hits(conf().mintrackhits()),
       use_timeresid(conf().usetimeresid()), 
       no_panel_dofs(conf().nopaneldofs()),
+      no_plane_dofs(conf().noplanedofs()),
       no_plane_rotations(conf().noplanerotations()), 
 
       gzip_compress(conf().millefilegzip()), 
@@ -309,25 +327,30 @@ public:
       error_scale(conf().errorscale()),
       use_unbiased_res(conf().enableCV()),
       constrain_strat(conf().constrainstrategy()),
-      fixed_planes(conf().fixplane()) {
+      fixed_planes(conf().fixplane()),
+      fixed_panels(conf().fixpanel()) {
 
     if (no_panel_dofs) {
-      _dof_per_panel = 0;
+      _used_dof_per_panel = 0;
+    }else if (no_plane_rotations) {
+      _used_dof_per_panel = 2;
     }
 
-    if (no_plane_rotations) {
-      _dof_per_plane = 3;
+    if (no_plane_dofs) {
+      _used_dof_per_plane = 0;
+    } else if (no_plane_rotations) {
+      _used_dof_per_plane = 3;
     }
 
-    _ndof = StrawId::_nplanes * _dof_per_plane + StrawId::_nupanels * _dof_per_panel;
-    _expected_dofs = _dof_per_panel + _dof_per_plane;
+    _ndof = StrawId::_nplanes * _used_dof_per_plane + StrawId::_nupanels * _used_dof_per_panel;
+    _expected_dofs = _used_dof_per_panel + _used_dof_per_plane;
 
     if (_diag > 0) {
       std::cout << "AlignTrackCollector: Total number of plane degrees of freedom = "
-                << StrawId::_nplanes * _dof_per_plane << std::endl;
+                << StrawId::_nplanes * _used_dof_per_plane << std::endl;
 
       std::cout << "AlignTrackCollector: Total number of panel degrees of freedom = "
-                << StrawId::_nupanels * _dof_per_panel << std::endl;
+                << StrawId::_nupanels * _used_dof_per_panel << std::endl;
 
       std::cout << "AlignTrackCollector: compression is "
                 << (gzip_compress ? "enabled" : "disabled") << std::endl;
@@ -348,6 +371,11 @@ void AlignTrackCollector::beginJob() {
     diagtree->Branch("time_resid", &time_residual, "time_resid[nHits]/F");
     diagtree->Branch("doca_resid_err", &doca_resid_err, "doca_resid_err[nHits]/F");
     diagtree->Branch("drift_res", &drift_reso, "drift_res[nHits]/F");
+    diagtree->Branch("bad_track",&bad_track,"bad_track/B");
+
+    diagtree->Branch("ddx",&ddx,"ddx[nHits]/F");
+    diagtree->Branch("ddy",&ddy,"ddy[nHits]/F");
+    diagtree->Branch("ddz",&ddz,"ddz[nHits]/F");
 
     diagtree->Branch("resid_err", &residual_err, "resid_err[nHits]/F");
 
@@ -355,6 +383,7 @@ void AlignTrackCollector::beginJob() {
     diagtree->Branch("pull_hittime", &pull_hittime, "pull_doca[nHits]/F");
 
     diagtree->Branch("doca", &doca, "doca[nHits]/F");
+    diagtree->Branch("ct_doca", &ct_doca, "ct_doca[nHits]/F");
     diagtree->Branch("time", &time, "time[nHits]/F");
     diagtree->Branch("plane", &plane_uid, "plane[nHits]/I");
     diagtree->Branch("panel", &panel_uid, "panel[nHits]/I");
@@ -397,12 +426,23 @@ void AlignTrackCollector::writeMillepedeSteering() {
 }
 
 bool AlignTrackCollector::isDOFfixed(int object_class, int object_id, int dof_n) {
-  if (object_class != 1) { return false; } // FIXME!
-  return std::find(fixed_planes.begin(), fixed_planes.end(), object_id) != fixed_planes.end();
+  if (object_class == 1) 
+    return std::find(fixed_planes.begin(), fixed_planes.end(), object_id) != fixed_planes.end();
+  if (object_class == 2) 
+    return std::find(fixed_panels.begin(), fixed_panels.end(), object_id) != fixed_panels.end();
+  return false;
 }
 
 bool AlignTrackCollector::isDOFenabled(int object_class, int object_id, int dof_n) {
   if (object_class == 2 && no_panel_dofs) {
+    return false;
+  }
+  if (object_class == 2 && no_plane_rotations && dof_n > 2) {
+    return false;
+  }
+  if (object_class == 2 && dof_n == 0)
+    return false;
+  if (object_class == 1 && no_plane_dofs) {
     return false;
   }
   if (object_class == 1 && no_plane_rotations && dof_n > 2) {
@@ -538,9 +578,28 @@ std::vector<int> AlignTrackCollector::generateDOFLabels(StrawId const& strw) {
   return generateDOFLabels(strw.getPlane(), strw.uniquePanel());
 }
 
+std::vector<double> AlignTrackCollector::fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal) {
+  std::vector<double> fixedDerivativesGlobal;
+  size_t index = 0;
+  for (size_t dof_n = 0; dof_n < _dof_per_plane; dof_n++) {
+    if (isDOFenabled(1, plane, dof_n)) {
+      fixedDerivativesGlobal.push_back(derivativesGlobal[index]);
+    }
+    index++;
+  }
+  for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
+    if (isDOFenabled(2, panel, dof_n)) {
+      fixedDerivativesGlobal.push_back(derivativesGlobal[index]);
+    }
+    index++;
+  }
+  
+  return fixedDerivativesGlobal;
+}
+
 std::vector<int> AlignTrackCollector::generateDOFLabels(uint16_t plane, uint16_t panel) {
   std::vector<int> labels;
-  labels.reserve(_dof_per_plane + _dof_per_panel);
+  labels.reserve(_used_dof_per_plane + _used_dof_per_panel);
 
   for (size_t dof_n = 0; dof_n < _dof_per_plane; dof_n++) {
     if (!isDOFenabled(1, plane, dof_n)) {
@@ -635,7 +694,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
     double max_time_res_track = -1;
 
     bool wrote_hits = false;
-    bool bad_track = false;
+    bad_track = false;
 
     std::vector<double> residuals;
     std::vector<std::vector<double>> global_derivs_temp;
@@ -700,6 +759,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       // now calculate the derivatives
       std::vector<double> derivativesLocal, derivativesGlobal;
 
+
       if (use_numeric_derivs) {
         std::tie(derivativesLocal, derivativesGlobal) = AlignmentUtilities::numericalDerivatives(
           track, straw_id, rowpl, rowpa, nominalTracker, _srep);
@@ -708,6 +768,8 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
         std::tie(derivativesLocal, derivativesGlobal) = AlignmentUtilities::analyticalDerivatives(
           track, straw_id, rowpl, rowpa, nominalTracker, driftvel);
       }
+
+      std::vector<double> derivativesGlobalFixed = fixDerivativesGlobal(straw_id.getPlane(), straw_id.uniquePanel(), derivativesGlobal);
 
       chisq += pow(time_resid / drift_res, 2);
       chisq_doca += pow(dca_resid / drift_res_dca, 2);
@@ -720,7 +782,29 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       planes_traversed.insert(plane_id);
       panels_traversed.insert(panel_id);
 
+  Straw const& nominalStraw = nominalTracker.getStraw(straw_id);
+  Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
+  Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+  Hep3Vector const& plane_origin = nominalTracker.getPlane(straw_id).origin();
+  Hep3Vector const& panel_origin = nominalTracker.getPanel(straw_id).straw0MidPoint();
+ 
+     double temp_ct_doca = CosmicTrack_DCA(
+      track.params[0], 
+      track.params[1], 
+      track.params[2], 
+      track.params[3], 
+      track.params[4], 
+      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(), 
+      rowpa.dx(), rowpa.dy(), rowpa.dz(), rowpa.rx(), rowpa.ry(), rowpa.rz(),
+      nominalStraw_mp.x(), nominalStraw_mp.y(), nominalStraw_mp.z(), nominalStraw_dir.x(),
+      nominalStraw_dir.y(), nominalStraw_dir.z(), plane_origin.x(), plane_origin.y(),
+      plane_origin.z(), panel_origin.x(), panel_origin.y(), panel_origin.z(), 0);
+
+
+
       // fill tree info
+      if (nHits < MAX_NHITS){
+        ct_doca[nHits] = temp_ct_doca;
       doca_residual[nHits] = dca_resid;
       time_residual[nHits] = time_resid;
       doca_resid_err[nHits] = drift_res_dca;
@@ -731,6 +815,10 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       time[nHits] = straw_hit.time();
       panel_uid[nHits] = panel_id;
       plane_uid[nHits] = plane_id;
+      ddx[nHits] = derivativesGlobal[0];
+      ddy[nHits] = derivativesGlobal[1];
+      ddz[nHits] = derivativesGlobal[2];
+      }
 
       if (_diag > 3) {
         std::cout << "pl" << plane_id << " pa" << panel_id 
@@ -767,8 +855,8 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       
       std::vector<int> labels = generateDOFLabels(straw_id);
 
-      if (_diag > 0 && labels.size() != derivativesGlobal.size() &&
-          derivativesGlobal.size() < _expected_dofs) {
+      if (labels.size() != derivativesGlobalFixed.size() ||
+          derivativesGlobalFixed.size() != _expected_dofs) {
         throw cet::exception("RECO") << "N global derivatives != N labels"
                                      << " or N of global derivatives was less than "
                                      << _expected_dofs << " ... Something is wrong!";
@@ -787,8 +875,8 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
         residuals.emplace_back(dca_resid);
       }
 
-      derivativesGlobal.resize(_dof_per_plane + _dof_per_panel);
-      global_derivs_temp.emplace_back(derivativesGlobal);
+//      derivativesGlobal.resize(_dof_per_plane + _dof_per_panel);
+      global_derivs_temp.emplace_back(derivativesGlobalFixed);
       local_derivs_temp.emplace_back(derivativesLocal);
       labels_temp.push_back(labels);
 
@@ -843,21 +931,21 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
             std::cout << "bad track" << std::endl;
           }
         }
-        std::cout << std::endl;
         continue;
       }
 
       // write hits to buffer
       for (size_t i = 0; i < (size_t)nHits; ++i) {
+        if (i < MAX_NHITS){
         residual_err[i] = drift_reso[i];
         mille_file.pushHit(local_derivs_temp[i], global_derivs_temp[i], labels_temp[i],
                             residuals[i], residual_err[i]);
+        }
       }
 
       if (bad_track || !wrote_hits) {
         if (_diag > 0) {
           std::cout << "killed track " << std::endl;
-          std::cout << std::endl;
         }
         mille_file.clear();
         continue;
@@ -875,7 +963,6 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
 
       if (_diag > 0) {
         std::cout << "wrote track " << tracks_written << std::endl;
-        std::cout << std::endl;
       }
     }
   }

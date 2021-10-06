@@ -14,6 +14,7 @@ BEGIN_PROLOG
 
     ConstrainStrategy : "Fix"
     FixPlane : [ 5, 30 ]
+    FixPanel : []
 
     UseTimeDomain : true
 
