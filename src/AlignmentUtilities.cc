@@ -319,13 +319,12 @@ namespace {
                                                 strawId, align_tracker, align_plane, align_panel, align_straw);
 
     TwoLinePCA pca(track.intercept(), track.direction(), straw_pos, straw_dir);
-    int ambig = hitAmbiguity(track, straw_pos, straw_dir);
-    double ambig_doca = pca.dca() * ambig;
 
     double traj_time = (pca.point1() - track.intercept()).dot(track.direction()) / 299.9;
-    double d2t_doca = ambig_doca / strawRes.driftInstantSpeed(strawId, ambig_doca, 0);
+    double d2t_doca = strawRes.driftDistanceToTime(strawId, pca.dca(), 0);
+    double t_offset = strawRes.driftTimeOffset(strawId, 0, 0, pca.dca());
 
-    double predictedTime = traj_time + track.params[CosmicTimeTrack::t0] + d2t_doca;
+    double predictedTime = traj_time + t_offset + track.params[CosmicTimeTrack::t0] + d2t_doca;
 
     return predictedTime;
   }
@@ -399,7 +398,12 @@ namespace {
       track.params[paramIdx] = x;
     }
 
-    return pdiff;
+    Straw const& nominalStraw = nominalTracker.getStraw(straw);
+    Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
+    Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+    int ambig = hitAmbiguity(track, nominalStraw_mp, nominalStraw_dir);
+
+    return pdiff*ambig;
   }
 }
 
