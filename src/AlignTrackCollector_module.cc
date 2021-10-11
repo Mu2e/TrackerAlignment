@@ -178,9 +178,10 @@ public:
     fhicl::Atom<bool> noplanerotations{Name("NoPlaneRotations"),
                                        Comment("Remove Plane rotation DOFs"), true};
 
-    fhicl::Atom<std::string> constrainstrategy{
-        Name("ConstrainStrategy"),
-        Comment("Which constraint strategy to use. Either 'Fix' or 'Average'"), "Fix"};
+    fhicl::Atom<std::string> weakconstraints{
+        Name("WeakConstraints"),
+        Comment("Which weak constraint strategy to use. Either 'None', 'Fix', or 'Measurement'")};
+    fhicl::Atom<bool> panelconstraints{   Name("PanelConstraints"),  Comment("Whether to constrain each panel DOF"),false};
     
     fhicl::Sequence<int> fixplane{
         Name("FixPlane"),
@@ -225,6 +226,20 @@ public:
     fhicl::Atom<bool> enableCV{
         Name("EnableLOOCVFitting"),
         Comment("Whether to enable LOOCV track fitting to obtain 'unbiased' residuals. Default is true."), true};
+    fhicl::Sequence<float> weakvalues{Name("WeakValues"), Comment("Constrain weak modes at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> weaksigmas{Name("WeakSigmas"), Comment("Constrain weak modes with these sigmas"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesx{Name("PanelValuesX"), Comment("Constrain panel x at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesy{Name("PanelValuesY"), Comment("Constrain panel y at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesz{Name("PanelValuesZ"), Comment("Constrain panel z at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesrx{Name("PanelValuesRX"), Comment("Constrain panel rx at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesry{Name("PanelValuesRY"), Comment("Constrain panel ry at these values"), std::vector<float>{}};
+    fhicl::Sequence<float> panelvaluesrz{Name("PanelValuesRZ"), Comment("Constrain panel rz at these values"), std::vector<float>{}};
+    fhicl::Atom<float> panelsigmax{Name("PanelSigmaX"), Comment("Constrain panel x with this sigma"),0};
+    fhicl::Atom<float> panelsigmay{Name("PanelSigmaY"), Comment("Constrain panel y with this sigma"),0};
+    fhicl::Atom<float> panelsigmaz{Name("PanelSigmaZ"), Comment("Constrain panel z with this sigma"),0};
+    fhicl::Atom<float> panelsigmarx{Name("PanelSigmaRX"), Comment("Constrain panel rx with this sigma"),0};
+    fhicl::Atom<float> panelsigmary{Name("PanelSigmaRY"), Comment("Constrain panel ry with this sigma"),0};
+    fhicl::Atom<float> panelsigmarz{Name("PanelSigmaRZ"), Comment("Constrain panel rz with this sigma"),0};
 
   };
 
@@ -261,9 +276,17 @@ public:
   bool use_unbiased_res;
 
 
-  std::string constrain_strat;
+  std::string weakconstraints;
+  bool panelconstraints;
   std::vector<int> fixed_planes;
   std::vector<int> fixed_panels;
+
+  std::vector<float> weak_values;
+  std::vector<float> weak_sigmas;
+  std::vector<std::vector<float>> panel_values;
+  std::vector<float> panel_sigmas;
+  float panel_sigmax, panel_sigmay, panel_sigmaz, panel_sigmarx, panel_sigmary, panel_sigmarz;
+
   
 
   const CosmicTrackSeedCollection* _coscol;
@@ -291,7 +314,7 @@ public:
   std::vector<double> fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal);
 
   void writeMillepedeSteering();
-  void writeMillepedeConstraints();
+  void writeMillepedeConstraints(Tracker const& tracker);
   void writeMillepedeParams(TrkAlignPlane const& alignConstPlanes,
                             TrkAlignPanel const& alignConstPanels);
   bool isDOFenabled(int object_class, int object_id, int dof_n);
@@ -326,9 +349,31 @@ public:
       steer_lines(conf().mpsteers()),
       error_scale(conf().errorscale()),
       use_unbiased_res(conf().enableCV()),
-      constrain_strat(conf().constrainstrategy()),
+      weakconstraints(conf().weakconstraints()),
       fixed_planes(conf().fixplane()),
-      fixed_panels(conf().fixpanel()) {
+      fixed_panels(conf().fixpanel()),
+      weak_values(conf().weakvalues()),
+      weak_sigmas(conf().weaksigmas())
+      {
+        panel_values.push_back(conf().panelvaluesx());
+        panel_values.push_back(conf().panelvaluesy());
+        panel_values.push_back(conf().panelvaluesz());
+        panel_values.push_back(conf().panelvaluesrx());
+        panel_values.push_back(conf().panelvaluesry());
+        panel_values.push_back(conf().panelvaluesrz());
+        panel_sigmas.push_back(conf().panelsigmax());
+        panel_sigmas.push_back(conf().panelsigmay());
+        panel_sigmas.push_back(conf().panelsigmaz());
+        panel_sigmas.push_back(conf().panelsigmarx());
+        panel_sigmas.push_back(conf().panelsigmary());
+        panel_sigmas.push_back(conf().panelsigmarz());
+        for (size_t i=0;i<6;i++){
+            std::cout << "Panel values " << i << ": ";
+          for (size_t j=0;j<panel_values[i].size();j++){
+            std::cout << panel_values[i][j] << " ";
+          }
+          std::cout << std::endl;
+        }
 
     if (no_panel_dofs) {
       _used_dof_per_panel = 0;
@@ -451,53 +496,103 @@ bool AlignTrackCollector::isDOFenabled(int object_class, int object_id, int dof_
   return true;
 }
 
-void AlignTrackCollector::writeMillepedeConstraints() {
-
+void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracker) {
 
   std::ofstream output_file(constr_filename);
   output_file << "! Generated by AlignTrackCollector" << std::endl;
-  output_file << "! Constraint strategy: " << constrain_strat << std::endl;
+  output_file << "! Weak constraint strategy: " << weakconstraints << std::endl;
 
-  if (constrain_strat != "Average") { // this function is called once, so the string comp happens once
-    return;
-  }
-
-  output_file << "! plane constraints:" << std::endl;
-
-  // plane translations, rotations
+  // plane overall translations and rotations are fixed
+  output_file << "! planes" << std::endl;
   for (size_t dof_n = 0; dof_n < _dof_per_plane; dof_n++) {
-    output_file << "Constraint    0" << std::endl;
-
+    if (!isDOFenabled(1, 0, dof_n)) {
+      continue;
+    }
+    output_file << "Constraint   0" << std::endl;
     for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-
-      if (!isDOFenabled(1, p, dof_n)) {
-        continue;
+      if (dof_n == 0 || dof_n == 2 || dof_n == 3 || dof_n == 5){
+        // if this plane is rotated, need to invert constraint
+        if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
+          output_file << getLabel(1, p, dof_n) << "    1" << std::endl;
+        else
+          output_file << getLabel(1, p, dof_n) << "    -1" << std::endl;
+      }else{
+        output_file << getLabel(1, p, dof_n) << "    1" << std::endl;
       }
-
-      // label(int)   coefficient of DOF corresp. to label in the sum
-      output_file << getLabel(1, p, dof_n) << "    1" << std::endl;
     }
   }
 
+  // panel overall z translation is fixed (relative to plane)
   output_file << "! panels follow" << std::endl;
-
-  // panel translations, rotations
-  for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
-    output_file << "Constraint    0" << std::endl;
-
-    for (uint16_t p = 0; p < StrawId::_nupanels; ++p) {
-      if (!isDOFenabled(1, p, dof_n)) {
-        continue;
+  if (isDOFenabled(2, 0, 2)){
+    // one constraint per plane
+    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+      output_file << "Constraint   0" << std::endl;
+      for (uint16_t pa=0; pa < StrawId::_npanels; ++ pa){
+        StrawId tempid(p,pa,0);
+        if (nominalTracker.getPanel(tempid).panelToDS().rotation().getTheta() == 0)
+          output_file << getLabel(2, p*StrawId::_npanels+pa, 2) << "    1" << std::endl;
+        else
+          output_file << getLabel(2, p*StrawId::_npanels+pa, 2) << "    -1" << std::endl;
       }
-
-      // label(int)   coefficient of DOF corresp. to label in the sum
-      output_file << getLabel(2, p, dof_n) << "    " << "  1" << std::endl;
-
     }
-    output_file << std::endl;
+  }
+  if (panelconstraints){
+    for (uint16_t p=0; p< StrawId::_nupanels; ++p){
+      for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
+        if (!isDOFenabled(2, p, dof_n)) {
+          continue;
+        }
+        output_file << "Measurement " << panel_values[dof_n][p] << " " << panel_sigmas[dof_n] << std::endl;
+        output_file << getLabel(2, p, dof_n) << "  1" << std::endl;
+      }
+    }
   }
 
+  output_file << "! weak modes follow" << std::endl;
+  if (weakconstraints == "None"){
+    return;
+    // if fixing specific panels then no further overall constraints
+  }
+  if (weakconstraints == "Fix"){
+    // Fix all weak modes to 0
+    // X skew
+    output_file << "Constraint  0" << std::endl;
+    output_file << getLabel(1, 0, 0) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 0) << "   -1" << std::endl;
+    // Y skew
+    output_file << "Constraint  0" << std::endl;
+    output_file << getLabel(1, 0, 1) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 1) << "   -1" << std::endl;
+    // Z squeeze
+    output_file << "Constraint  0" << std::endl;
+    output_file << getLabel(1, 0, 2) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 2) << "   -1" << std::endl;
+    // z twist
+    output_file << "Constraint  0" << std::endl;
+    output_file << getLabel(1, 0, 5) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 5) << "   -1" << std::endl;
+  }else{
+    // Constrain weak modes by measurements
+    // X skew
+    output_file << "Measurement " << weak_values[0] << " " << weak_sigmas[0] << std::endl;
+    output_file << getLabel(1, 0, 0) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 0) << "   -1" << std::endl;
+    // Y skew
+    output_file << "Measurement " << weak_values[1] << " " << weak_sigmas[1] << std::endl;
+    output_file << getLabel(1, 0, 1) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 1) << "   -1" << std::endl;
+    // Z squeeze
+    output_file << "Measurement " << weak_values[2] << " " << weak_sigmas[2] << std::endl;
+    output_file << getLabel(1, 0, 2) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 2) << "   -1" << std::endl;
+    // z twist
+    output_file << "Measurement " << weak_values[3] << " " << weak_sigmas[3] << std::endl;
+    output_file << getLabel(1, 0, 5) << "   1" << std::endl;
+    output_file << getLabel(1, StrawId::_nplanes-1, 5) << "   -1" << std::endl;
+    //FIXME r squeeze
 
+  }
 }
 
 void AlignTrackCollector::writeMillepedeParams(TrkAlignPlane const& alignConstPlanes,
@@ -507,7 +602,7 @@ void AlignTrackCollector::writeMillepedeParams(TrkAlignPlane const& alignConstPl
 
   std::ofstream output_file(param_filename);
   output_file << "! Generated by AlignTrackCollector" << std::endl;
-  output_file << "! Constraint strategy: " << constrain_strat << std::endl;
+  output_file << "! Weak constraint strategy: " << weakconstraints << std::endl;
   output_file << "! columns: label, alignment parameter start value, "
                  "presigma (-ve: fixed, 0: variable)" << std::endl;
 
@@ -631,7 +726,10 @@ void AlignTrackCollector::endJob() {
               << std::endl;
   }
 
-  writeMillepedeConstraints();
+  GeomHandle<Tracker> track;
+  _tracker = track.get();
+
+  writeMillepedeConstraints(*_tracker);
   writeMillepedeSteering();
 }
 
@@ -906,7 +1004,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
           (max_time_res_track > max_timeres && max_timeres > 0) ||
           (nHits < min_track_hits) || bad_track) {
 
-        if (_diag > 0) {
+        if (_diag > 1) {
           std::cout << "track failed quality cuts" << std::endl;
         }
 
@@ -944,7 +1042,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       }
 
       if (bad_track || !wrote_hits) {
-        if (_diag > 0) {
+        if (_diag > 1) {
           std::cout << "killed track " << std::endl;
         }
         mille_file.clear();
@@ -961,7 +1059,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       tracks_written++;
       wrote_track = true;
 
-      if (_diag > 0) {
+      if (_diag > 1) {
         std::cout << "wrote track " << tracks_written << std::endl;
       }
     }
