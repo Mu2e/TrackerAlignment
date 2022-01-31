@@ -48,7 +48,6 @@ other_libs = [
     'cetlib',
     'cetlib_except',
     'CLHEP',
-    'HepPDT',
     'xerces-c',
 
     'pthread',
