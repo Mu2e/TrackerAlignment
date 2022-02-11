@@ -123,7 +123,7 @@ def generate_expressions(approximate=False, remove_globalparam_dependence=False,
     if time_domain:
         # FIXME! need to add time offset
         traj_time = (pca.point1() - track_pos).dot(track_dir)
-        diff_expr = D2T(pca.dca(), driftvel) + t0 + traj_time #+ time_offset
+        diff_expr = D2T(aligned_doca, driftvel) + t0 + traj_time #+ time_offset
 
     # now generate optimised C code to calculate each deriv
     if remove_globalparam_dependence:
@@ -206,19 +206,8 @@ def fn_from_expr(name, return_type, expr, symbols):
 
 
 def main():
-    function_prefix = "GaussianDriftFit_ResidDeriv_"
-
-    if 'MU2E_BASE_RELEASE' not in os.environ:
-        print ("Please source setup.sh for the Offline build you want to generate the code for.")
-        return
-    
-    base_path = os.environ['MU2E_BASE_RELEASE']
-    package_name = 'TrackerAlignment'
-
-    print ("MU2E_BASE_RELEASE: %s" % base_path)
-    print ("Package: %s" % package_name)
-
-    base_path = os.path.join(base_path, package_name)
+    function_prefix = "CosmicTrack_DCA"
+    base_path = "."
 
     print ("algebra...")
     exprs, params, aligned_doca, _, _ = generate_expressions()

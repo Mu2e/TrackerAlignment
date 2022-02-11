@@ -12,8 +12,9 @@ BEGIN_PROLOG
     MaxTimeRes : 10.0
     MinTrackSH: 10
 
-    ConstrainStrategy : "Fix"
+    WeakConstraints : "None"
     FixPlane : [ 5, 30 ]
+    FixPanel : []
 
     UseTimeDomain : true
 

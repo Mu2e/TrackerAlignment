@@ -17,6 +17,7 @@
 #include "Minuit2/MnUserCovariance.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <iostream>
 #include <iterator>
 #include <vector>
@@ -80,12 +81,13 @@ bool testDerivatives(
     return false;
   }
   
+  bool passed = true;
   for (size_t i = 0; i < numLocal.size(); ++i) {
      if (std::abs(anaLocal[i] - numLocal[i]) > tolerance) {
       std::cerr << "local derivative mismatch(idx " << i << "): diff = " 
                 << std::abs(anaLocal[i] - numLocal[i]) 
                 << std::endl;
-       return false;
+       passed = false;
      }
   }
 
@@ -99,9 +101,11 @@ bool testDerivatives(
        std::cerr << "global derivative mismatch: diff = " 
                 << std::abs(anaGlobal[i] - numGlobal[i]) 
                 << std::endl;
-       return false;
+       passed = false;
      }
   }
+  if (!passed)
+    return false;
 
   return true;
 }
@@ -394,7 +398,12 @@ namespace {
       track.params[paramIdx] = x;
     }
 
-    return pdiff;
+    Straw const& nominalStraw = nominalTracker.getStraw(straw);
+    Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
+    Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+    int ambig = hitAmbiguity(track, nominalStraw_mp, nominalStraw_dir);
+
+    return pdiff*ambig;
   }
 }
 
@@ -424,13 +433,13 @@ numericalDerivatives(CosmicTimeTrack const& _track, StrawId const& straw,
   for (size_t paramIdx = 0; paramIdx < track.npars(); ++paramIdx) {
     result_locals.emplace_back(
         _numericalDerivative(straw, track, globals, nominalTracker, strawRes,
-                              false, paramIdx, 1e-7, useTimeDomain));
+                              false, paramIdx, 1e-5, useTimeDomain));
   }
 
   for (size_t paramIdx = 0; paramIdx < globals.size(); ++paramIdx) {
     result_globals.emplace_back(
         _numericalDerivative(straw, track, globals, nominalTracker, strawRes, 
-                              true, paramIdx, 1e-7, useTimeDomain));
+                              true, paramIdx, 1e-5, useTimeDomain));
   }
 
 
