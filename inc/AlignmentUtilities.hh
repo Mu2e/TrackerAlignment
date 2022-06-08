@@ -6,6 +6,7 @@
 #include "Offline/Mu2eUtilities/inc/TwoLinePCA.hh"
 #include "RtypesCore.h"
 #include "TTree.h"
+#include "TMatrixD.h"
 
 // art
 #include "Offline/TrackerConditions/inc/StrawResponse.hh"
