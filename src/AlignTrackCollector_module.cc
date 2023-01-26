@@ -98,7 +98,6 @@ private:
   Float_t doca_residual[MAX_NHITS];
   Float_t time_residual[MAX_NHITS];
   Float_t residual_err[MAX_NHITS];
-  Float_t doca_resid_err[MAX_NHITS];
   Float_t drift_reso[MAX_NHITS];
 
   Float_t ddx[MAX_NHITS];
@@ -107,7 +106,6 @@ private:
 
   bool bad_track;
 
-  Float_t pull_doca[MAX_NHITS];
   Float_t pull_hittime[MAX_NHITS];
 
   Float_t doca[MAX_NHITS];
@@ -123,7 +121,6 @@ private:
   Double_t T0;
 
   Double_t chisq;
-  Double_t chisq_doca;
   Int_t ndof;
   Double_t pvalue;
 
@@ -414,7 +411,6 @@ void AlignTrackCollector::beginJob() {
     diagtree->Branch("nHits", &nHits, "nHits/I");
     diagtree->Branch("doca_resid", &doca_residual, "doca_resid[nHits]/F");
     diagtree->Branch("time_resid", &time_residual, "time_resid[nHits]/F");
-    diagtree->Branch("doca_resid_err", &doca_resid_err, "doca_resid_err[nHits]/F");
     diagtree->Branch("drift_res", &drift_reso, "drift_res[nHits]/F");
     diagtree->Branch("bad_track",&bad_track,"bad_track/B");
 
@@ -424,8 +420,7 @@ void AlignTrackCollector::beginJob() {
 
     diagtree->Branch("resid_err", &residual_err, "resid_err[nHits]/F");
 
-    diagtree->Branch("pull_doca", &pull_doca, "pull_doca[nHits]/F");
-    diagtree->Branch("pull_hittime", &pull_hittime, "pull_doca[nHits]/F");
+    diagtree->Branch("pull_hittime", &pull_hittime, "pull_hittime[nHits]/F");
 
     diagtree->Branch("doca", &doca, "doca[nHits]/F");
     diagtree->Branch("ct_doca", &ct_doca, "ct_doca[nHits]/F");
@@ -440,7 +435,6 @@ void AlignTrackCollector::beginJob() {
     diagtree->Branch("T0", &T0, "T0/D");
 
     diagtree->Branch("chisq", &chisq, "chisq/D");
-    diagtree->Branch("chisq_doca", &chisq_doca, "chisq_doca/D");
 
     diagtree->Branch("ndof", &ndof, "ndof/I");
     diagtree->Branch("pvalue", &pvalue, "pvalue/D");
@@ -783,7 +777,6 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
     GaussianDriftFit fit_object(sts._straw_chits, _srep, &alignedTracker);
 
     chisq = 0;
-    chisq_doca = 0;
     ndof = 0;
     pvalue = 0;
     nHits = 0;
@@ -845,10 +838,9 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
 
       double driftvel = _srep.driftInstantSpeed(straw_id, pca.dca(), 0);
       double dca_resid = fit_object.DOCAresidual(straw_hit, track.as_vector());
-      double drift_res_dca = error_scale * _srep.driftDistanceError(straw_hit.strawId(), 0, 0, pca.dca());
 
       double time_resid = fit_object.TimeResidual(straw_hit, track.as_vector());
-      double drift_res = error_scale * _srep.driftTimeError(straw_hit.strawId(), 0, 0, pca.dca());
+      double drift_res = error_scale * _srep.driftTimeError(straw_hit.strawId(), pca.dca(), 0);
 
       // alignment constants for derivatives
       auto const& rowpl = alignConsts_planes.rowAt(plane_id);
@@ -870,7 +862,6 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       std::vector<double> derivativesGlobalFixed = fixDerivativesGlobal(straw_id.getPlane(), straw_id.uniquePanel(), derivativesGlobal);
 
       chisq += pow(time_resid / drift_res, 2);
-      chisq_doca += pow(dca_resid / drift_res_dca, 2);
 
       if (isnan(dca_resid) || isnan(time_resid) || isnan(drift_res)) {
         bad_track = true;
@@ -905,8 +896,6 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
         ct_doca[nHits] = temp_ct_doca;
       doca_residual[nHits] = dca_resid;
       time_residual[nHits] = time_resid;
-      doca_resid_err[nHits] = drift_res_dca;
-      pull_doca[nHits] = dca_resid / drift_res_dca;
       pull_hittime[nHits] = time_resid / drift_res;
       drift_reso[nHits] = drift_res;
       doca[nHits] = pca.dca();
@@ -921,7 +910,6 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       if (_diag > 3) {
         std::cout << "pl" << plane_id << " pa" << panel_id 
                   << ": dcaresid " << dca_resid << " +- "
-                  << drift_res_dca << std::endl
                   << "timeresid " << time_resid << " +- " 
                   << drift_res << std::endl;
       }

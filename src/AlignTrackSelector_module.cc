@@ -90,7 +90,6 @@ private:
   Double_t T0;
 
   Double_t chisq;
-  Double_t chisq_doca;
   Int_t ndof;
   Double_t pvalue;
 
@@ -216,7 +215,6 @@ bool AlignTrackSelector::filter_CosmicTrackSeedCollection(art::Event const& even
     bool bad_track = false;
 
     chisq = 0;
-    chisq_doca = 0;
     pvalue = 0;
     nHits = 0;
 
@@ -248,11 +246,9 @@ bool AlignTrackSelector::filter_CosmicTrackSeedCollection(art::Event const& even
 
       TwoLinePCA pca(straw.getMidPoint(), straw.getDirection(), intercept, dir);
 
-      double drift_res_time = _srep.driftTimeError(straw_hit.strawId(), 0, 0, pca.dca());
-      double drift_res_dist = _srep.driftDistanceError(straw_hit.strawId(), 0, 0, pca.dca());
+      double drift_res_time = _srep.driftTimeError(straw_hit.strawId(), pca.dca(), 0);
 
       chisq += pow(time_resid / drift_res_time, 2);
-      chisq_doca += pow(doca_resid / drift_res_dist, 2);
 
       if (isnan(doca_resid) || isnan(time_resid) || isnan(drift_res_time)) {
         bad_track = true;
@@ -263,8 +259,7 @@ bool AlignTrackSelector::filter_CosmicTrackSeedCollection(art::Event const& even
       panels_traversed.insert(panel_uuid);
 
       if (_diag > 2) {
-        std::cout << "pl" << plane_id << " pa" << panel_uuid << ": dcaresid " << doca_resid
-                  << " +- " << drift_res_dist << std::endl;
+        std::cout << "pl" << plane_id << " pa" << panel_uuid << ": dcaresid " << doca_resid << std::endl;
       }
 
       // avoid outlier hits when applying this cut
