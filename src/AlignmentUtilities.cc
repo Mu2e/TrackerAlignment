@@ -322,7 +322,7 @@ namespace {
 
     double traj_time = (pca.point1() - track.intercept()).dot(track.direction()) / 299.9;
     double d2t_doca = strawRes.driftDistanceToTime(strawId, pca.dca(), 0);
-    double t_offset = strawRes.driftTimeOffset(strawId, 0, 0, pca.dca());
+    double t_offset = strawRes.driftTimeOffset(strawId, pca.dca(), 0);
 
     double predictedTime = traj_time + t_offset + track.params[CosmicTimeTrack::t0] + d2t_doca;
 
