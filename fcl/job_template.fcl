@@ -8,7 +8,7 @@ services.ProditionsService.mu2eDetector.verbose: 2
 
 services.DbService.textFile: ["alignconstants_in.txt"]
 
-physics.analyzers.AlignTrackCollector.diagLevel : 5
+physics.analyzers.AlignTrackCollector.diagLevel : 0
 
 physics.analyzers.AlignTrackCollector.MinTraversedPlanes : 3
 physics.analyzers.AlignTrackCollector.MaxTimeRes : 20.0
@@ -16,14 +16,16 @@ physics.analyzers.AlignTrackCollector.MinTrackSH: 10
 
 physics.analyzers.AlignTrackCollector.SteeringOpts : [ ]
 
-physics.analyzers.AlignTrackCollector.NoPlaneRotations : false
-
 physics.analyzers.AlignTrackCollector.ErrorScale : 1.0
 physics.analyzers.AlignTrackCollector.EnableLOOCVFitting : false
 
+physics.analyzers.AlignTrackCollector.UseNumericalDiffn : true
+
+# Let weak modes float unconstrained
+physics.analyzers.AlignTrackCollector.WeakConstraints : "None"
 # Fixes the following Plane IDs ([0,35] inclusive) to their Proditions values
-physics.analyzers.AlignTrackCollector.ConstrainStrategy : "Fix"
 physics.analyzers.AlignTrackCollector.FixPlane : [ 5, 30 ]
+physics.analyzers.AlignTrackCollector.FixPanel : [  ]
 
 physics.analyzers.AlignTrackCollector.MilleFile : "MilleData.bin.gz"
 physics.analyzers.AlignTrackCollector.GzipCompression : true 
@@ -34,3 +36,12 @@ physics.analyzers.AlignTrackCollector.ConstrFile : "mp-constr.txt"
 
 # diagnostics and plots, usually
 services.TFileService.fileName: "TrackDiag.root"
+
+
+physics.analyzers.AlignTrackCollector.NoPlaneRotations : false
+# Set whether aligning planes, panels or both
+physics.analyzers.AlignTrackCollector.NoPanelDOFs : true
+physics.analyzers.AlignTrackCollector.NoPlaneDOFs : false
+
+# if aligning panels, may need to include constraints
+#physics.analyzers.AlignTrackCollector.PanelConstraints : true

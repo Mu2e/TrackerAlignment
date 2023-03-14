@@ -2,7 +2,7 @@ BEGIN_PROLOG
 
  AlignTrackCollector : {
     module_type		: AlignTrackCollector
-    diagLevel : 1
+    diagLevel : 0
 
     CosmicTrackSeedCollection : "CosmicTrackFinderTimeFit"
 
@@ -20,7 +20,7 @@ BEGIN_PROLOG
 
     NoPanelDOFs : true 
     NoPlaneRotations : true 
-    UseNumericalDiffn : false
+    UseNumericalDiffn : true
 
     MilleFile : "TrackData.bin.gz"
     GzipCompression : true 
