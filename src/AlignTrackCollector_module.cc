@@ -1070,7 +1070,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
   filter_CosmicTrackSeedCollection(event, tracker, *_tracker, _srep, coscol);
 }
 
-}; // namespace mu2e
+} // namespace mu2e
 
 using mu2e::AlignTrackCollector;
-DEFINE_ART_MODULE(AlignTrackCollector);
+DEFINE_ART_MODULE(AlignTrackCollector)

@@ -323,7 +323,7 @@ bool AlignTrackSelector::filter(art::Event& event) {
   return filter_CosmicTrackSeedCollection(event, tracker, _srep, coscol);
 }
 
-}; // namespace mu2e
+} // namespace mu2e
 
 using mu2e::AlignTrackSelector;
-DEFINE_ART_MODULE(AlignTrackSelector);
+DEFINE_ART_MODULE(AlignTrackSelector)
