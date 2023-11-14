@@ -15,7 +15,6 @@ mu2e_libs = [
     'mu2e_TrackerGeom',
     'mu2e_GeneralUtilities',
     'mu2e_Mu2eUtilities',
-    'mu2e_Mu2eInterfaces',
     'mu2e_TrackerConditions',
     'mu2e_DbTables',
     'mu2e_DbService',
@@ -25,8 +24,8 @@ mu2e_libs = [
 
 # extra ROOT libraries
 root_libs += [
-    'Minuit', 
-    'Minuit2', 
+    'Minuit',
+    'Minuit2',
 ]
 
 art_libs = [
