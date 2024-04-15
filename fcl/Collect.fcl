@@ -44,7 +44,6 @@ outputs : {
 }
 
 #include "Production/JobConfig/reco/epilog.fcl"
-#include "Production/JobConfig/reco/offspill_epilog.fcl"
 
 services.TFileService.fileName : "nts.owner.RecoMCTrig.version.sequencer.root"
 outputs.Output.fileName : "mcs.owner.RecoMCTrig.version.sequencer.art"
@@ -70,4 +69,14 @@ physics.producers.LineFinder.StepSize : 0.5
 physics.producers.LineFinder.maxDOCA : 3
 physics.producers.LineFinder.minPeak : 3
 
+
+services.GeometryService.inputFile: "Offline/Mu2eG4/geom/geom_common_extracted.txt"
+services.GeometryService.bFieldFile: "Offline/Mu2eG4/geom/bfgeom_no_field.txt"
+
+#
+# Database configuration for validation and CI jobs
+#
+services.DbService.purpose: MDC2020_best
+services.DbService.version: v1_2
+services.DbService.verbose : 2
 
