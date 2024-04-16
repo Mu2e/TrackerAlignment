@@ -39,24 +39,24 @@ bool testDerivatives(
 
   // first compare DOCA
   Straw const& alignedStraw = alignedTracker.getStraw(strawId);
-  double expected_dca = hitAmbiguity(track, 
-      alignedStraw.getMidPoint(), 
-      alignedStraw.getDirection()) * expected_pca.dca();
+  double expected_dca = hitAmbiguity(track,
+      alignedStraw.wirePosition(),
+      alignedStraw.wireDirection()) * expected_pca.dca();
 
   Straw const& nominalStraw = nominalTracker.getStraw(strawId);
-  Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
-  Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+  Hep3Vector const& nominalStraw_mp = nominalStraw.wirePosition();
+  Hep3Vector const& nominalStraw_dir = nominalStraw.wireDirection();
   Hep3Vector const& plane_origin = nominalTracker.getPlane(strawId).origin();
   Hep3Vector const& panel_origin = nominalTracker.getPanel(strawId).straw0MidPoint();
-  
+
   // calculate DOCA from analytical generated code
   double doca = CosmicTrack_DCA(
-      track.params[CosmicTimeTrack::a0], 
-      track.params[CosmicTimeTrack::b0], 
-      track.params[CosmicTimeTrack::a1], 
-      track.params[CosmicTimeTrack::b1], 
-      track.params[CosmicTimeTrack::t0], 
-      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(), 
+      track.params[CosmicTimeTrack::a0],
+      track.params[CosmicTimeTrack::b0],
+      track.params[CosmicTimeTrack::a1],
+      track.params[CosmicTimeTrack::b1],
+      track.params[CosmicTimeTrack::t0],
+      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(),
       rowpa.dx(), rowpa.dy(), rowpa.dz(), rowpa.rx(), rowpa.ry(), rowpa.rz(),
 
       nominalStraw_mp.x(), nominalStraw_mp.y(), nominalStraw_mp.z(), nominalStraw_dir.x(),
@@ -80,12 +80,12 @@ bool testDerivatives(
     std::cerr << "size mismatch  (local)" << std::endl;
     return false;
   }
-  
+
   bool passed = true;
   for (size_t i = 0; i < numLocal.size(); ++i) {
      if (std::abs(anaLocal[i] - numLocal[i]) > tolerance) {
-      std::cerr << "local derivative mismatch(idx " << i << "): diff = " 
-                << std::abs(anaLocal[i] - numLocal[i]) 
+      std::cerr << "local derivative mismatch(idx " << i << "): diff = "
+                << std::abs(anaLocal[i] - numLocal[i])
                 << std::endl;
        passed = false;
      }
@@ -98,8 +98,8 @@ bool testDerivatives(
   }
   for (size_t i = 0; i < numGlobal.size(); ++i) {
      if (std::abs(anaGlobal[i] - numGlobal[i]) > tolerance) {
-       std::cerr << "global derivative mismatch: diff = " 
-                << std::abs(anaGlobal[i] - numGlobal[i]) 
+       std::cerr << "global derivative mismatch: diff = "
+                << std::abs(anaGlobal[i] - numGlobal[i])
                 << std::endl;
        passed = false;
      }
@@ -110,7 +110,7 @@ bool testDerivatives(
   return true;
 }
 
-std::pair<std::vector<double>, std::vector<double>> 
+std::pair<std::vector<double>, std::vector<double>>
   analyticalDerivatives(CosmicTimeTrack const& track,
     StrawId const& strawId,
     TrkAlignParams const&rowpl,
@@ -121,36 +121,36 @@ std::pair<std::vector<double>, std::vector<double>>
   auto const& plane_origin = nominalTracker.getPlane(strawId).origin();
   auto const& panel_origin = nominalTracker.getPanel(strawId).origin();
   auto const& nominalStraw = nominalTracker.getStraw(strawId);
-  auto const& nominalStraw_mp = nominalStraw.getMidPoint();
-  auto const& nominalStraw_dir = nominalStraw.getDirection();
+  auto const& nominalStraw_mp = nominalStraw.wirePosition();
+  auto const& nominalStraw_dir = nominalStraw.wireDirection();
 
   auto derivativesLocal = CosmicTrack_DCA_LocalDeriv(
-      track.params[CosmicTimeTrack::a0], 
-      track.params[CosmicTimeTrack::b0], 
-      track.params[CosmicTimeTrack::a1], 
-      track.params[CosmicTimeTrack::b1], 
-      track.params[CosmicTimeTrack::t0], 
-      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(), 
+      track.params[CosmicTimeTrack::a0],
+      track.params[CosmicTimeTrack::b0],
+      track.params[CosmicTimeTrack::a1],
+      track.params[CosmicTimeTrack::b1],
+      track.params[CosmicTimeTrack::t0],
+      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(),
       rowpa.dx(), rowpa.dy(), rowpa.dz(), rowpa.rx(), rowpa.ry(), rowpa.rz(),
 
       nominalStraw_mp.x(), nominalStraw_mp.y(), nominalStraw_mp.z(), nominalStraw_dir.x(),
       nominalStraw_dir.y(), nominalStraw_dir.z(), plane_origin.x(), plane_origin.y(),
       plane_origin.z(), panel_origin.x(), panel_origin.y(), panel_origin.z(), driftvel);
-  
+
   auto derivativesGlobal = CosmicTrack_DCA_GlobalDeriv(
-      track.params[CosmicTimeTrack::a0], 
-      track.params[CosmicTimeTrack::b0], 
-      track.params[CosmicTimeTrack::a1], 
-      track.params[CosmicTimeTrack::b1], 
-      track.params[CosmicTimeTrack::t0],  
-  
-      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(), 
+      track.params[CosmicTimeTrack::a0],
+      track.params[CosmicTimeTrack::b0],
+      track.params[CosmicTimeTrack::a1],
+      track.params[CosmicTimeTrack::b1],
+      track.params[CosmicTimeTrack::t0],
+
+      rowpl.dx(), rowpl.dy(), rowpl.dz(), rowpl.rx(), rowpl.ry(), rowpl.rz(),
       rowpa.dx(), rowpa.dy(), rowpa.dz(), rowpa.rx(), rowpa.ry(), rowpa.rz(),
 
-      nominalStraw_mp.x(), nominalStraw_mp.y(), nominalStraw_mp.z(), 
+      nominalStraw_mp.x(), nominalStraw_mp.y(), nominalStraw_mp.z(),
       nominalStraw_dir.x(),nominalStraw_dir.y(), nominalStraw_dir.z(),
-      plane_origin.x(), plane_origin.y(), plane_origin.z(), 
-      panel_origin.x(), panel_origin.y(), panel_origin.z(), 
+      plane_origin.x(), plane_origin.y(), plane_origin.z(),
+      panel_origin.x(), panel_origin.y(), panel_origin.z(),
       driftvel);
 
   return {derivativesLocal, derivativesGlobal};
@@ -166,7 +166,7 @@ int hitAmbiguity(CosmicTimeTrack const& track, Hep3Vector const& straw_mp,
 }
 
 // cov(r) = V - HCH
-TMatrixD residualCovariance(CosmicTimeTrack const& track, 
+TMatrixD residualCovariance(CosmicTimeTrack const& track,
   std::vector<double> const& track_cov,
   std::vector<std::vector<double>> const& local_derivatives,
   std::vector<double> const& meas_err) {
@@ -218,16 +218,16 @@ TMatrixD residualCovariance(CosmicTimeTrack const& track,
   return meas_cov;
 }
 
-/* 
+/*
  * diagnostic prints
  */
 
 void diagPrintTrack(CosmicTimeTrack const& track) {
-  std::cout << "[A0,B0,A1,B1,T0]: [" 
-        <<         track.params[track.a0] 
-        << ", " << track.params[track.b0] 
-        << ", " << track.params[track.a1] 
-        << ", " << track.params[track.b1]  
+  std::cout << "[A0,B0,A1,B1,T0]: ["
+        <<         track.params[track.a0]
+        << ", " << track.params[track.b0]
+        << ", " << track.params[track.a1]
+        << ", " << track.params[track.b1]
         << ", " << track.params[track.t0];
   std::cout << "]" << std::endl;
 }
@@ -237,24 +237,24 @@ void diagPrintHit(CosmicTimeTrack const& track,
   std::vector<double> const& derivativesLocal,
   std::vector<double> const& derivativesGlobal,
   StrawId const& strawId) {
-  std::cout << "TOCA resid: " 
-            << tresid 
-            << " +- " 
-            << resolution 
+  std::cout << "TOCA resid: "
+            << tresid
+            << " +- "
+            << resolution
             << std::endl;
-  std::cout << "dr/d([A0,B0,A1,B1,T0]): [" 
-            <<         derivativesLocal[0] 
-            << ", " << derivativesLocal[1]                    
-            << ", " << derivativesLocal[2]                     
-            << ", " << derivativesLocal[3]                 
-            << ", " << derivativesLocal[4];               
+  std::cout << "dr/d([A0,B0,A1,B1,T0]): ["
+            <<         derivativesLocal[0]
+            << ", " << derivativesLocal[1]
+            << ", " << derivativesLocal[2]
+            << ", " << derivativesLocal[3]
+            << ", " << derivativesLocal[4];
   std::cout << "]" << std::endl;
 
-  std::cout << "dr/d(plane" 
-            << strawId.getPlane() 
-            << "[x, y, z]): [" 
-            <<         derivativesGlobal[0] 
-            << ", " << derivativesGlobal[1] 
+  std::cout << "dr/d(plane"
+            << strawId.getPlane()
+            << "[x, y, z]): ["
+            <<         derivativesGlobal[0]
+            << ", " << derivativesGlobal[1]
             << ", " << derivativesGlobal[2];
   std::cout << "]" << std::endl;
 
@@ -262,12 +262,12 @@ void diagPrintHit(CosmicTimeTrack const& track,
 
 // straw alignment function
 // carbon copy of AlignedTrackerMaker::fromDb
-std::pair<Hep3Vector, Hep3Vector> alignStraw(Tracker const& tracker, 
+std::pair<Hep3Vector, Hep3Vector> alignStraw(Tracker const& tracker,
                                              StrawId const& strawId,
                                              TrkAlignParams const& align_tracker,
                                              TrkAlignParams const& align_plane,
                                              TrkAlignParams const& align_panel,
-					     TrkStrawEndAlign const& align_straw) {  
+                                             TrkStrawEndAlign const& align_straw) {
 
   auto const& plane = tracker.getPlane(strawId);
   auto const& panel = tracker.getPanel(strawId);
@@ -289,7 +289,7 @@ std::pair<Hep3Vector, Hep3Vector> alignStraw(Tracker const& tracker,
     wireends[iend] = aligned_panel_to_ds*wireend_UVW;
   }
 // compute the net position and direction from these
-  auto aligned_strawmid = 0.5*(wireends[0] + wireends[1]); 
+  auto aligned_strawmid = 0.5*(wireends[0] + wireends[1]);
   auto aligned_strawdir = (wireends[StrawEnd::cal]- wireends[StrawEnd::hv]).unit(); // convention  is direction points from HV to Cal
   return {aligned_strawmid, aligned_strawdir};
 }
@@ -298,7 +298,7 @@ std::pair<Hep3Vector, Hep3Vector> alignStraw(Tracker const& tracker,
 
 /* Numerical partial DOCA/TOCA derivatives
  *
- */ 
+ */
 
 
 namespace {
@@ -315,7 +315,7 @@ namespace {
 
     // returns pair of vectors { straw_pos, straw_dir }
     Hep3Vector straw_pos, straw_dir;
-    std::tie(straw_pos, straw_dir) = alignStraw(nominalTracker, 
+    std::tie(straw_pos, straw_dir) = alignStraw(nominalTracker,
                                                 strawId, align_tracker, align_plane, align_panel, align_straw);
 
     TwoLinePCA pca(track.intercept(), track.direction(), straw_pos, straw_dir);
@@ -334,11 +334,11 @@ namespace {
 // this function should be consolidated with the above FIXME!
     TrkAlignParams align_tracker{strawId, StrawIdMask::tracker, 0, 0, 0, 0, 0, 0};
     TrkAlignParams align_plane{strawId, StrawIdMask::plane, globals[0], globals[1], globals[2], globals[3], globals[4], globals[5]};
-    TrkAlignParams align_panel{strawId, StrawIdMask::uniquepanel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]}; 
+    TrkAlignParams align_panel{strawId, StrawIdMask::uniquepanel, globals[6], globals[7],  globals[8], globals[9], globals[10], globals[11]};
     TrkStrawEndAlign align_straw{strawId.uniqueStraw(), strawId, 0,0,0,0,0,0,0,0}; // not sure how to really initialize this FIXME!
     // returns pair of vectors { straw_pos, straw_dir }
     Hep3Vector straw_pos, straw_dir;
-    std::tie(straw_pos, straw_dir) = alignStraw(nominalTracker, 
+    std::tie(straw_pos, straw_dir) = alignStraw(nominalTracker,
                                                 strawId, align_tracker, align_plane, align_panel,align_straw);
 
     TwoLinePCA pca(track.intercept(), track.direction(), straw_pos, straw_dir);
@@ -369,7 +369,7 @@ namespace {
     }
 
     double pdiff;
-    
+
     if (useTimeDomain) {
       pdiff = tocaGlobalDep(track, straw, globals, nominalTracker, strawRes);
     }
@@ -399,8 +399,8 @@ namespace {
     }
 
     Straw const& nominalStraw = nominalTracker.getStraw(straw);
-    Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
-    Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+    Hep3Vector const& nominalStraw_mp = nominalStraw.wirePosition();
+    Hep3Vector const& nominalStraw_dir = nominalStraw.wireDirection();
     int ambig = hitAmbiguity(track, nominalStraw_mp, nominalStraw_dir);
 
     return pdiff*ambig;
@@ -411,7 +411,7 @@ std::pair<std::vector<double>, std::vector<double>>
 numericalDerivatives(CosmicTimeTrack const& _track, StrawId const& straw,
                          TrkAlignParams const& alignPlane,
                          TrkAlignParams const& alignPanel,
-                         Tracker const& nominalTracker, 
+                         Tracker const& nominalTracker,
                          StrawResponse const& strawRes,
                          bool useTimeDomain) {
 
@@ -438,7 +438,7 @@ numericalDerivatives(CosmicTimeTrack const& _track, StrawId const& straw,
 
   for (size_t paramIdx = 0; paramIdx < globals.size(); ++paramIdx) {
     result_globals.emplace_back(
-        _numericalDerivative(straw, track, globals, nominalTracker, strawRes, 
+        _numericalDerivative(straw, track, globals, nominalTracker, strawRes,
                               true, paramIdx, 1e-5, useTimeDomain));
   }
 

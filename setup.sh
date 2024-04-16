@@ -7,7 +7,7 @@ fi
 export TRKALIGN_BASE=`cd "$(dirname ${BASH_SOURCE})" >/dev/null 2>&1 && /bin/pwd`
 
 export TRKALIGN_SCRIPTS_DIR="${TRKALIGN_BASE}/scripts"
-export DS_COSMIC_NOFIELD_ALIGNSELECT="/pnfs/mu2e/persistent/users/mu2epro/MDC2020Dev/DS-cosmic-nofield-alignselect/sources.txt"
+export NOFIELD_DATASET="dig.mu2e.CosmicCRYExtractedCatDigiTrk.MDC2020y_best_v1_1.art"
 
 setup millepede
 
@@ -120,9 +120,9 @@ function mu2ealign_mergeoutput() {
 function mu2ealign_genjobfcl() {
     cp ${TRKALIGN_BASE}/fcl/job_template.fcl job.fcl
     echo "Generated new job.fcl!"
-    echo "Using DS_COSMIC_NOFIELD_ALIGNSELECT as dataset. ( 8 files )"
+    echo "Using ${NOFIELD_DATASET} as dataset. (first 8 files)"
     echo "Please change sources.txt if you want to use something else."
-    head -n 8 ${DS_COSMIC_NOFIELD_ALIGNSELECT} > sources.txt
+    mu2eDatasetFileList ${NOFIELD_DATASET} | head -n 8 > sources.txt
 }
 
 function mu2ealign_progress() {

@@ -834,7 +834,7 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
 
       // hit DOCA, DOCA/TOCA residuals, errors
       TwoLinePCA pca(track.intercept(), track.direction(), 
-          alignedStraw.getMidPoint(), alignedStraw.getDirection());
+          alignedStraw.wirePosition(), alignedStraw.wireDirection());
 
       double driftvel = _srep.driftInstantSpeed(straw_id, pca.dca(), 0);
       double dca_resid = fit_object.DOCAresidual(straw_hit, track.as_vector());
@@ -872,8 +872,8 @@ bool AlignTrackCollector::filter_CosmicTrackSeedCollection(
       panels_traversed.insert(panel_id);
 
   Straw const& nominalStraw = nominalTracker.getStraw(straw_id);
-  Hep3Vector const& nominalStraw_mp = nominalStraw.getMidPoint();
-  Hep3Vector const& nominalStraw_dir = nominalStraw.getDirection();
+  Hep3Vector const& nominalStraw_mp = nominalStraw.wirePosition();
+  Hep3Vector const& nominalStraw_dir = nominalStraw.wireDirection();
   Hep3Vector const& plane_origin = nominalTracker.getPlane(straw_id).origin();
   Hep3Vector const& panel_origin = nominalTracker.getPanel(straw_id).straw0MidPoint();
  
