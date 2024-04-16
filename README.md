@@ -9,7 +9,7 @@ My thesis on this work: [FERMILAB-MASTERS-2020-07](https://inspirehep.net/litera
 
 ### Alignment set-up
 ![Alignment flow(2)](https://user-images.githubusercontent.com/56410978/82936768-fa2e6500-9f86-11ea-81fe-b9f0bf20e842.png)
-- 'Digis' refers to art files containing 'digi' data products. Supported datasets are `DS-cosmic-nofield` or `DS-cosmic-nofield-alignselect`. Please see MDC2020Dev on the Mu2e Wiki.
+- 'Digis' refers to art files containing 'digi' data products. Current configuration is for cosmics in the extracted position (no field).
 - Track Reco uses Richie's Time Fit ( [Mu2e-doc-33162](https://mu2e-docdb.fnal.gov/cgi-bin/sso/ShowDocument?docid=33162) )
 - 'MILLE' means to write input files for the 'PEDE' executable. The `MILLE` stage is implemented by `MilleDataWriter`.
 - 'Align Tracker' refers to the stage carried out by `AlignedTrackerMaker` (TrackerConditions). It uses alignment constants provided to the Proditions interface to change tracker straw positions accordingly.
@@ -18,21 +18,28 @@ My thesis on this work: [FERMILAB-MASTERS-2020-07](https://inspirehep.net/litera
 
 
 ### MC Alignment test
-1. Set up this base release.
-```bash
-source <Offline release>/setup.sh
+1. Set up your backing build
 ```
-2. Set up a TrackerAlignment helper environment.
+mkdir BackingBuild
+cd BackingBuild
+muse backing HEAD
+```
+2. Build TrackerAlignment
+```
+git clone git@github.com:mu2e/TrackerAlignment
+muse setup
+muse build -j 4
+```
+3. Set up a TrackerAlignment helper environment.
 Note that you may also need to install some python packages using pip for the plotting scripts to work.
-```bash
-source setup.sh
-
+```
+source TrackerAlignment/setup.sh
 python -m pip install --user -r ${TRKALIGN_BASE}/scripts/requirements.txt
 ```
 
 2. Choose a working directory and setup your starting misalignment
 ```
-cd /mu2e/data/users/$USER/
+cd /exp/mu2e/data/users/$USER/
 mkdir alignment-test
 cd alignment-test
 
@@ -41,7 +48,8 @@ mu2ealign new MT_MDC2018_Fix5_30
 ```
 This command generates job.fcl, alignconstants_in.txt, revision.txt, and sources.txt. This is effectively a working directory for one alignment iteration. This also saves the Mu2e Offline revision at the time of generation. The file env.sh is also created which when sourced will add the current directory to your MU2E_SEARCH_PATH so that alignment files placed here are found by Offline.
 
-The Tracker is misaligned according to the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied.
+By default the alignment jobs are based on the MDC2020_best conditions, and various parts of the alignment can be overridden with text file configurations.
+Here, the Tracker plane misalignment is overwritten with the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied.
 
 It's important to choose which planes to fix in the alignment, in order to suppress weak modes, such as a stretch or squeeze in z.
 Fixing planes 5, 30 to zero in all DOFs, for example. This means changing the values accordingly in `alignconstants_in.txt` for Plane 5 + 30, and ensuring that these parameters are set in `job.fcl`:
