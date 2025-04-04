@@ -75,7 +75,6 @@
 #include "fhiclcpp/types/Table.h"
 #include "fhiclcpp/types/detail/validationException.h"
 
-#include "TrackerAlignment/inc/AlignmentDerivatives.hh"
 #include "TrackerAlignment/inc/MilleDataWriter.hh"
 #include "TrackerAlignment/inc/AlignmentUtilities.hh"
 
@@ -106,6 +105,7 @@ public:
     fhicl::Atom<bool> usenumerical{       Name("UseNumericalDiffn"), Comment("Whether or not to use numerical derivatives. Default is false.")};
 
     fhicl::Atom<int> minplanetraverse{Name("MinTraversedPlanes"), Comment("How many planes must be traversed for a track to be accepted.")};
+    fhicl::Atom<int> minpaneltraverse{Name("MinTraversedPanels"), Comment("How many panels must be traversed for a track to be accepted.")};
     fhicl::Atom<double> maxtimeres{Name("MaxTimeRes"), Comment("Require that the maximum ABSOLUTE time residual over all track hits < MaxTimeRes.")};
     fhicl::Atom<int> mintrackhits{Name("MinTrackSH"), Comment("Require that the minimum straw hits in a track > MinTrackSH.")};
 
@@ -158,6 +158,7 @@ private:
   std::vector<std::string> _steerLines;
   bool _useNumericalDerivs;
   int _minPlaneTraverse;
+  int _minPanelTraverse;
   double _maxTimeRes;
   int _minTrackHits;
 
@@ -224,7 +225,9 @@ private:
   Double_t _chisq;
   Int_t _ndof;
   Double_t _pvalue;
+  Float_t _max_time_resid;
   Int_t _planes_trav;
+  Int_t _panels_trav;
 
   int getLabel(int const&, int const&, int const&);
   std::vector<int> generateDOFLabels(uint16_t plane, uint16_t panel);
@@ -254,6 +257,7 @@ AlignTrackCollector::AlignTrackCollector(const Parameters& conf) :
   _steerLines(conf().mpsteers()),
   _useNumericalDerivs(conf().usenumerical()),
   _minPlaneTraverse(conf().minplanetraverse()),
+  _minPanelTraverse(conf().minpaneltraverse()),
   _maxTimeRes(conf().maxtimeres()),
   _minTrackHits(conf().mintrackhits()),
       
@@ -361,8 +365,10 @@ void AlignTrackCollector::beginJob() {
 
     _diagtree->Branch("ndof", &_ndof, "ndof/I");
     _diagtree->Branch("pvalue", &_pvalue, "pvalue/D");
+    _diagtree->Branch("max_time_resid", &_max_time_resid, "max_time_resid/F");
 
     _diagtree->Branch("planes_trav", &_planes_trav, "planes_trav/I");
+    _diagtree->Branch("panels_trav", &_panels_trav, "panels_trav/I");
   }
 
 }
@@ -414,6 +420,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
     CosmicTrack const& st = sts._track;
 
     std::set<uint16_t> planes_traversed;
+    std::set<uint16_t> panels_traversed;
 
     _A0 = st.MinuitParams.A0;
     _A1 = st.MinuitParams.A1;
@@ -425,7 +432,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
 
 
     // for the max timeresidual track quality cut
-    double max_time_res_track = -1;
+    _max_time_resid = -1;
 
     int ngood_hits = 0;
     _nHits = 0;
@@ -542,13 +549,14 @@ void AlignTrackCollector::analyze(art::Event const& event) {
       std::vector<double> derivativesGlobalFixed = fixDerivativesGlobal(straw_id.getPlane(), straw_id.uniquePanel(), derivativesGlobal);
 
       planes_traversed.insert(plane_id);
+      panels_traversed.insert(panel_id);
 
       // Time residual cut
       // avoid outlier hits when applying this cut
       // FIXME
       if (!straw_hit._flag.hasAnyProperty(StrawHitFlag::outlier)) {
-        if (abs(time_resid) > max_time_res_track) {
-          max_time_res_track = abs(time_resid);
+        if (abs(time_resid) > _max_time_resid) {
+          _max_time_resid = abs(time_resid);
         }
       }
 
@@ -620,19 +628,20 @@ void AlignTrackCollector::analyze(art::Event const& event) {
     _pvalue = 1.0-boost::math::cdf(boost::math::chi_squared(_ndof), _chisq);
     _chisq /= _ndof;
     _planes_trav = planes_traversed.size();
+    _panels_trav = panels_traversed.size();
 
-    if ((int) planes_traversed.size() < _minPlaneTraverse){
+    if (_planes_trav < _minPlaneTraverse || _panels_trav < _minPanelTraverse){
       if (_diag > 1)
         std::cout << "AlignTrackCollector: track failed quality cuts" << std::endl;
       if (_diag > 2) 
-        std::cout << "  reason: planes traversed " << planes_traversed.size() << std::endl;
+        std::cout << "  reason: planes/panels traversed " << _planes_trav << " " << _panels_trav << std::endl;
       continue;
     }
-    if (max_time_res_track > _maxTimeRes){
+    if (_max_time_resid > _maxTimeRes){
       if (_diag > 1)
         std::cout << "AlignTrackCollector: track failed quality cuts" << std::endl;
       if (_diag > 2) 
-        std::cout << "  reason: max time residual " << max_time_res_track << std::endl;
+        std::cout << "  reason: max time residual " << _max_time_resid << std::endl;
       continue;
     }
     if (ngood_hits < _minTrackHits){

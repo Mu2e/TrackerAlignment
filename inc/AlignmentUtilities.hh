@@ -23,7 +23,6 @@
 #include "Offline/DbTables/inc/TrkAlignParams.hh"
 #include "Offline/DbTables/inc/TrkStrawEndAlign.hh"
 
-#include "TrackerAlignment/inc/AlignmentDerivatives.hh"
 #include "TrackerAlignment/inc/MilleDataWriter.hh"
 #include <cstdint>
 #include <iterator>
@@ -77,44 +76,8 @@ struct CosmicTimeTrack {
   }
 };
 
-bool testDerivatives(
-    TwoLinePCA const& expected_pca,
-    Tracker const& alignedTracker, // what is this used for??
-    CosmicTimeTrack const& track,
-    StrawId const& strawId,
-    TrkAlignParams const&rowpl, // what do these refer to if the tracker is already aligned?  Also, where is the tracker global alignment? FIXME!
-    TrkAlignParams const&rowpa,
-    Tracker const& nominalTracker,
-    StrawResponse const& strawRes); // need to add Straw alignment FIXME!
-
-
-std::pair<std::vector<double>, std::vector<double>> 
-  analyticalDerivatives(CosmicTimeTrack const& track,
-    StrawId const& strawId,
-    TrkAlignParams const&rowpl,
-    TrkAlignParams const&rowpa,
-    Tracker const& nominalTracker, // 
-    double const& driftvel);
-
-TMatrixD residualCovariance(CosmicTimeTrack const& track, 
-  std::vector<double> const& track_cov,
-  std::vector<std::vector<double>> const& local_derivatives,
-  std::vector<double> const& meas_err);
-
 int hitAmbiguity(CosmicTimeTrack const& track, Hep3Vector const& straw_mp,
                  Hep3Vector const& straw_dir);
-
-/* diagnostic prints
- */
-
-void diagPrintTrack(CosmicTimeTrack const& track);
-
-void diagPrintHit(CosmicTimeTrack const& track,
-  double const& tresid, double const& resolution,
-  std::vector<double> const& derivativesLocal,
-  std::vector<double> const& derivativesGlobal,
-  StrawId const& strawId);
-
 
 std::pair<Hep3Vector, Hep3Vector> alignStraw(Tracker const& tracker, 
                                              StrawId const& strawId,

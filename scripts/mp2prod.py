@@ -67,6 +67,7 @@ class AlignmentConstants:
                 'TrkAlignPlane': AlignmentTable('TrkAlignPlane', 1, 36, 6, 6*96), 
                 'TrkAlignPanel': AlignmentTable('TrkAlignPanel', 2, 216, 6, 96),
                 'TrkAlignStraw': AlignmentTable('TrkAlignStraw', 3, 20736, 8, 1)}
+        self.usetable = {table : False for table in self.tables}
                 
 
     def read_db_file(self, input_file):
@@ -138,12 +139,14 @@ class AlignmentConstants:
                     if obj_type == self.tables[table].classid:
                         self.tables[table].constants[id][dof] += p
                         self.tables[table].errors[id][dof] = perr
+                        self.usetable[table] = True
                         break
 
     def export_table(self):
         with io.StringIO() as f:
-            for table in self.tables.values():
-                f.write(table.to_proditions_table())
+            for table in self.tables:
+                if self.usetable[table]:
+                    f.write(self.tables[table].to_proditions_table())
             return f.getvalue()
 
 
