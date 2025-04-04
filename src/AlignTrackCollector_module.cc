@@ -171,7 +171,6 @@ private:
   std::vector<float> _weakSigmas;
   std::vector<std::vector<float>> _panelValues;
   std::vector<float> _panelSigmas;
-  float _panelSigmax, _panelSigmay, _panelSigmaz, _panelSigmarx, _panelSigmary, _panelSigmarz;
 
 
   bool _wroteMillepedeParams;
@@ -200,6 +199,15 @@ private:
   Float_t _ddx[MAX_NHITS];
   Float_t _ddy[MAX_NHITS];
   Float_t _ddz[MAX_NHITS];
+  Float_t _ddrx[MAX_NHITS];
+  Float_t _ddry[MAX_NHITS];
+  Float_t _ddrz[MAX_NHITS];
+  Float_t _ddxpa[MAX_NHITS];
+  Float_t _ddypa[MAX_NHITS];
+  Float_t _ddzpa[MAX_NHITS];
+  Float_t _ddrxpa[MAX_NHITS];
+  Float_t _ddrypa[MAX_NHITS];
+  Float_t _ddrzpa[MAX_NHITS];
   Float_t _pull_hittime[MAX_NHITS];
   Float_t _doca[MAX_NHITS];
   Float_t _time[MAX_NHITS];
@@ -279,6 +287,16 @@ AlignTrackCollector::AlignTrackCollector(const Parameters& conf) :
     _panelSigmas.push_back(conf().panelsigmarx());
     _panelSigmas.push_back(conf().panelsigmary());
     _panelSigmas.push_back(conf().panelsigmarz());
+    for (size_t i=0;i<6;i++){
+      if (_panelValues.size() != StrawId::_nupanels){
+        if (_panelValues[i].size() == 0){
+          std::cout << "PanelValues " << i << " not set! using 0 as default" << std::endl;
+        } else{
+          std::cout << "Warning! Incorrect number of panelValues " << i << std::endl;
+        }
+        _panelValues[i] = std::vector<float>(StrawId::_nupanels,0);
+      }
+    }
   }
 
   for (size_t p=0;p<StrawId::_nplanes;p++){
@@ -308,6 +326,15 @@ void AlignTrackCollector::beginJob() {
     _diagtree->Branch("ddx",&_ddx,"ddx[nHits]/F");
     _diagtree->Branch("ddy",&_ddy,"ddy[nHits]/F");
     _diagtree->Branch("ddz",&_ddz,"ddz[nHits]/F");
+    _diagtree->Branch("ddrx",&_ddrx,"ddrx[nHits]/F");
+    _diagtree->Branch("ddry",&_ddry,"ddry[nHits]/F");
+    _diagtree->Branch("ddrz",&_ddrz,"ddrz[nHits]/F");
+    _diagtree->Branch("ddxpa",&_ddxpa,"ddxpa[nHits]/F");
+    _diagtree->Branch("ddypa",&_ddypa,"ddypa[nHits]/F");
+    _diagtree->Branch("ddzpa",&_ddzpa,"ddzpa[nHits]/F");
+    _diagtree->Branch("ddrxpa",&_ddrxpa,"ddrxpa[nHits]/F");
+    _diagtree->Branch("ddrypa",&_ddrypa,"ddrypa[nHits]/F");
+    _diagtree->Branch("ddrzpa",&_ddrzpa,"ddrzpa[nHits]/F");
 
     _diagtree->Branch("resid_err", &_residual_err, "resid_err[nHits]/F");
 
@@ -478,8 +505,8 @@ void AlignTrackCollector::analyze(art::Event const& event) {
 
         auto panel_delta = pca.point2() - panel.origin();
         panelDerivs[3] = panel.uDirection().cross(panel_delta).dot(drdx);
-        panelDerivs[4] = panel.uDirection().cross(panel_delta).dot(drdx);
-        panelDerivs[5] = panel.uDirection().cross(panel_delta).dot(drdx);
+        panelDerivs[4] = panel.vDirection().cross(panel_delta).dot(drdx);
+        panelDerivs[5] = panel.wDirection().cross(panel_delta).dot(drdx);
 
         CLHEP::Hep3Vector plane_uDirection(1,0,0);
         CLHEP::Hep3Vector plane_vDirection(0,1,0);
@@ -548,6 +575,15 @@ void AlignTrackCollector::analyze(art::Event const& event) {
         _ddx[_nHits] = derivativesGlobal[0];
         _ddy[_nHits] = derivativesGlobal[1];
         _ddz[_nHits] = derivativesGlobal[2];
+        _ddrx[_nHits] = derivativesGlobal[3];
+        _ddry[_nHits] = derivativesGlobal[4];
+        _ddrz[_nHits] = derivativesGlobal[5];
+        _ddxpa[_nHits] = derivativesGlobal[6];
+        _ddypa[_nHits] = derivativesGlobal[7];
+        _ddzpa[_nHits] = derivativesGlobal[8];
+        _ddrxpa[_nHits] = derivativesGlobal[9];
+        _ddrypa[_nHits] = derivativesGlobal[10];
+        _ddrzpa[_nHits] = derivativesGlobal[11];
         _nHits++;
       }
     }
@@ -561,7 +597,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
     }
 
 
-    int _ndof = ngood_hits - 5;
+    _ndof = ngood_hits - 5;
 
     // track acceptance cuts
     if (_ndof <= 0){
@@ -614,6 +650,10 @@ void AlignTrackCollector::analyze(art::Event const& event) {
     _milleFile.flushTrack();
 
     _tracksWritten++;
+
+    if (_diag > 1) {
+      std::cout << "wrote track " << _tracksWritten << std::endl;
+    }
   }
 }
 
@@ -787,13 +827,45 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
         output_file << getLabel(2, p*StrawId::_npanels+pa, 2) << "    -1" << std::endl;
     }
   }
+
+  // panel v translations dot xhat and yhat are fixed (equal to overall plane translation)
+  CLHEP::Hep3Vector xhat(1,0,0);
+  CLHEP::Hep3Vector yhat(0,1,0);
+  for (size_t pl=0;pl<StrawId::_nplanes;pl++){
+    bool has_enabled = false;
+    for (uint16_t pa=0;pa<StrawId::_npanels;++pa){
+      if (isDOFenabled(2, pl*StrawId::_npanels+pa, 1)) {
+        has_enabled = true;
+        break;
+      }
+    }
+    if (!has_enabled)
+      continue;
+    output_file << "Constraint   0" << std::endl;
+    for (size_t pa=0;pa<StrawId::_npanels;pa++){
+      size_t p = pl*6+pa;
+      if (!isDOFenabled(2, pl*StrawId::_npanels+pa, 1))
+        continue;
+      StrawId tempid(p,pa,0);
+      output_file << getLabel(2, pl*strawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(xhat) << std::endl;
+    }
+    output_file << "Constraint   0" << std::endl;
+    for (size_t pa=0;pa<StrawId::_npanels;pa++){
+      size_t p = pl*6+pa;
+      if (!isDOFenabled(2, pl*StrawId::_npanels+pa, 1))
+        continue;
+      StrawId tempid(p,pa,0);
+      output_file << getLabel(2, pl*strawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(yhat) << std::endl;
+    }
+  }
+
   if (_panelConstraints){
     for (uint16_t p=0; p< StrawId::_nupanels; ++p){
       for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
         if (!isDOFenabled(2, p, dof_n)) {
           continue;
         }
-        output_file << "Measurement " << _panelValues[dof_n][p] << " " << _panelSigmas[dof_n] << std::endl;
+        output_file << "Measurement " << _panelValues[dof_n][p]-_startingAlignPanels[p*6+dof_n] << " " << _panelSigmas[dof_n] << std::endl;
         output_file << getLabel(2, p, dof_n) << "  1" << std::endl;
       }
     }
@@ -813,6 +885,7 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
     double zsqueeze = 0;
     double ztwist = 0;
     for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+      // FIXME check if enabled
       if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0){
         xskew += _startingAlignPlanes[p*6+0] * (p-17.5);
         yskew += _startingAlignPlanes[p*6+1] * (p-17.5);
@@ -829,92 +902,207 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
         yparallel += _startingAlignPlanes[p*6+4];
       }
     }
+    std::vector<double> vpairoffsets(6,0);
+    std::vector<double> vpairslopes(6,0);
+    for (uint16_t pl = 0; pl < StrawId::_nplanes; ++pl) {
+      for (uint16_t pa = 0; pa < StrawId::_npanels; ++pa) {
+        uint16_t p = pl*6+pa;
+        // FIXME check if enabled
+        if (nominalTracker.getPlane(pl).planeToDS().rotation().getTheta() == 0){
+          vpairoffsets[pa] += _startingAlignPanels[p*6+1];
+          vpairslopes[pa]  += _startingAlignPanels[p*6+1] * (pl-17.5);
+        }else{
+          vpairoffsets[5-pa] -= _startingAlignPanels[p*6+1];
+          vpairslopes[5-pa] -= _startingAlignPanels[p*6+1] * (pl-17.5);
+        }
+      }
+    }
 
     // Fix all weak modes to 0
     // or Constrain weak modes by measurements
 
     // X skew
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*xskew << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[0]-xskew << " " << _weakSigmas[0] << std::endl;
+    bool has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 0)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 0))
-        continue;
-      // if this plane is rotated, need to invert constraint
-      if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
-        output_file << getLabel(1, p, 0) << "    " << (p-17.5) << std::endl;
-      else
-        output_file << getLabel(1, p, 0) << "    " << -1*(p-17.5) << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*xskew << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[0]-xskew << " " << _weakSigmas[0] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 0))
+          continue;
+        // if this plane is rotated, need to invert constraint
+        if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
+          output_file << getLabel(1, p, 0) << "    " << (p-17.5) << std::endl;
+        else
+          output_file << getLabel(1, p, 0) << "    " << -1*(p-17.5) << std::endl;
+      }
     }
+    
     // Y skew
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*yskew << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[1]-yskew << " " << _weakSigmas[1] << std::endl;
+    has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 1)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 1))
-        continue;
-      output_file << getLabel(1, p, 1) << "    " << (p-17.5) << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*yskew << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[1]-yskew << " " << _weakSigmas[1] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 1))
+          continue;
+        output_file << getLabel(1, p, 1) << "    " << (p-17.5) << std::endl;
+      }
     }
 
     // Z squeeze
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*zsqueeze << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[2]-zsqueeze << " " << _weakSigmas[2] << std::endl;
+    has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 2)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 2))
-        continue;
-      // if this plane is rotated, need to invert constraint
-      if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
-        output_file << getLabel(1, p, 2) << "    " << (p-17.5) << std::endl;
-      else
-        output_file << getLabel(1, p, 2) << "    " << -1*(p-17.5) << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*zsqueeze << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[2]-zsqueeze << " " << _weakSigmas[2] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 2))
+          continue;
+        // if this plane is rotated, need to invert constraint
+        if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
+          output_file << getLabel(1, p, 2) << "    " << (p-17.5) << std::endl;
+        else
+          output_file << getLabel(1, p, 2) << "    " << -1*(p-17.5) << std::endl;
+      }
     }
     // X parallel
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*xparallel << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[3]-xparallel << " " << _weakSigmas[3] << std::endl;
+    has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 3)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 3))
-        continue;
-      // if this plane is rotated, need to invert constraint
-      if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
-        output_file << getLabel(1, p, 3) << "    " << 1 << std::endl;
-      else
-        output_file << getLabel(1, p, 3) << "    " << -1 << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*xparallel << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[3]-xparallel << " " << _weakSigmas[3] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 3))
+          continue;
+        // if this plane is rotated, need to invert constraint
+        if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
+          output_file << getLabel(1, p, 3) << "    " << 1 << std::endl;
+        else
+          output_file << getLabel(1, p, 3) << "    " << -1 << std::endl;
+      }
     }
     // Y parallel
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*yparallel << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[4]-yparallel << " " << _weakSigmas[4] << std::endl;
+    has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 4)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 4))
-        continue;
-      output_file << getLabel(1, p, 4) << "    " << 1 << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*yparallel << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[4]-yparallel << " " << _weakSigmas[4] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 4))
+          continue;
+        output_file << getLabel(1, p, 4) << "    " << 1 << std::endl;
+      }
     }
     // z twist
-    if (_weakConstraints == "Fix"){
-      output_file << "Constraint " << -1*ztwist << std::endl;
-    }else{
-      output_file << "Measurement " << _weakValues[3]-ztwist << " " << _weakSigmas[3] << std::endl;
+    has_enabled = false;
+    for (uint16_t p=0;p<StrawId::_nplanes;++p){
+      if (isDOFenabled(1, p, 5)) {
+        has_enabled = true;
+        break;
+      }
     }
-    for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
-      if (!isDOFenabled(1, p, 5))
-        continue;
-      // if this plane is rotated, need to invert constraint
-      if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
-        output_file << getLabel(1, p, 5) << "    " << (p-17.5) << std::endl;
-      else
-        output_file << getLabel(1, p, 5) << "    " << -1*(p-17.5) << std::endl;
+    if (has_enabled){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*ztwist << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[5]-ztwist << " " << _weakSigmas[5] << std::endl;
+      }
+      for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
+        if (!isDOFenabled(1, p, 5))
+          continue;
+        // if this plane is rotated, need to invert constraint
+        if (nominalTracker.getPlane(p).planeToDS().rotation().getTheta() == 0)
+          output_file << getLabel(1, p, 5) << "    " << (p-17.5) << std::endl;
+        else
+          output_file << getLabel(1, p, 5) << "    " << -1*(p-17.5) << std::endl;
+      }
+    }
+    //FIXME starting value
+    //FIXME has enabled
+    // panel radial out pair
+    for (size_t i=0;i<6;i++){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*vpairoffsets[i] << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[6+i]-vpairoffsets[i] << " " << _weakSigmas[6+i] << std::endl;
+      }
+      for (uint16_t pl = 0; pl < StrawId::_nplanes; ++pl) {
+        for (uint16_t pa = 0; pa < StrawId::_npanels; ++pa) {
+          auto p = pl*6 + pa;
+          if (!isDOFenabled(2, p, 1))
+            continue;
+          if (nominalTracker.getPlane(pl).planeToDS().rotation().getTheta() == 0){
+            if (pa == i)
+              output_file << getLabel(2, p, 1) << "    " << 1 << std::endl;
+          }else{
+            if (pa == 5-i)
+              output_file << getLabel(2, p, 1) << "    " << -1 << std::endl;
+          }
+        }
+      }
+    }
+    for (size_t i=0;i<6;i++){
+      if (_weakConstraints == "Fix"){
+        output_file << "Constraint " << -1*vpairslopes[i] << std::endl;
+      }else{
+        output_file << "Measurement " << _weakValues[7+i]-vpairslopes[i] << " " << _weakSigmas[7+i] << std::endl;
+      }
+      for (uint16_t pl = 0; pl < StrawId::_nplanes; ++pl) {
+        for (uint16_t pa = 0; pa < StrawId::_npanels; ++pa) {
+          auto p = pl*6 + pa;
+          if (!isDOFenabled(2, p, 1))
+            continue;
+          if (nominalTracker.getPlane(pl).planeToDS().rotation().getTheta() == 0){
+            if (pa == i)
+              output_file << getLabel(2, p, 1) << "    " << (pl-17.5) << std::endl;
+          }else{
+            if (pa == 5-i)
+              output_file << getLabel(2, p, 1) << "    " << -1*(pl-17.5) << std::endl;
+          }
+        }
+      }
     }
   }
 }

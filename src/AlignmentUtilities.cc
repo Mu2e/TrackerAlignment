@@ -401,7 +401,7 @@ namespace {
     Straw const& nominalStraw = nominalTracker.getStraw(straw);
     Hep3Vector const& nominalStraw_mp = nominalStraw.wirePosition();
     Hep3Vector const& nominalStraw_dir = nominalStraw.wireDirection();
-    int ambig = hitAmbiguity(track, nominalStraw_mp, nominalStraw_dir);
+    int ambig = 1;//hitAmbiguity(track, nominalStraw_mp, nominalStraw_dir);
 
     return pdiff*ambig;
   }

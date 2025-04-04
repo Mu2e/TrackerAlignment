@@ -1,41 +1,42 @@
 BEGIN_PROLOG
 
- AlignTrackCollector : {
-    module_type		: AlignTrackCollector
+AlignTrackCollector : {
+    module_type : AlignTrackCollector
     diagLevel : 0
-
     CosmicTrackSeedCollection : "CosmicTrackFinderTimeFit"
+    UseNumericalDiffn : false
 
     MinTraversedPlanes : 3
-    MinTraversedPanelsPerPlane : 0
+    MaxTimeRes : 40.0
+    MinTrackSH : 20
+    WeakConstraints : "Fix"
+    PanelConstraints : false
+    WeakValues : []
+    WeakSigmas : []
+    PanelValuesX : []
+    PanelValuesY : []
+    PanelValuesZ : []
+    PanelValuesRX : []
+    PanelValuesRY : []
+    PanelValuesRZ : []
+    PanelSigmaX : 0
+    PanelSigmaY : 0
+    PanelSigmaZ : 0
+    PanelSigmaRX : 0
+    PanelSigmaRY : 0
+    PanelSigmaRZ : 0
 
-    MaxTimeRes : 10.0
-    MinTrackSH: 10
-
-    WeakConstraints : "None"
-    FixPlane : [ 5, 30 ]
+    FixPlane : []
     FixPanel : []
 
-    UseTimeDomain : true
+    EnablePlaneTranslationDOF : true
+    EnablePlaneRotationDOF : true
+    EnablePanelTranslationDOF : false
+    EnablePanelRotationDOF : false
 
-    NoPanelDOFs : true 
-    NoPlaneRotations : true 
-    UseNumericalDiffn : true
-
-    MilleFile : "TrackData.bin.gz"
-    GzipCompression : true 
-
-    SteerFile : "steer.txt"
-    ParamFile : "params.txt"
-    ConstrFile : "constr.txt"
-
-    SteeringOpts : [ ]
-
-    ErrorScale : 1.0
-
-    EnableLOOCVFitting : false
-}
-
+    GzipCompression : true
+    SteeringOpts : []
+ }
 
  AlignTrackSelector : {
     module_type		: AlignTrackSelector
