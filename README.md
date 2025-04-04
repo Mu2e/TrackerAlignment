@@ -31,10 +31,13 @@ muse setup
 muse build -j 4
 ```
 3. Set up a TrackerAlignment helper environment.
-Note that you may also need to install some python packages using pip for the plotting scripts to work.
 ```
 source TrackerAlignment/setup.sh
-python -m pip install --user -r ${TRKALIGN_BASE}/scripts/requirements.txt
+```
+
+Optionally to use python plotting tools you will need to setup a virtual environment and install additional python packages using:
+```
+source TrackerAlignment/scripts/venv_setup.sh
 ```
 
 2. Choose a working directory and setup your starting misalignment
@@ -43,24 +46,19 @@ cd /exp/mu2e/data/users/$USER/
 mkdir alignment-test
 cd alignment-test
 
-mu2ealign new MT_MDC2018_Fix5_30
+mu2ealign new MDC2020_startup_planes MDC2020_best v1_3
 
 ```
 This command generates job.fcl, alignconstants_in.txt, revision.txt, and sources.txt. This is effectively a working directory for one alignment iteration. This also saves the Mu2e Offline revision at the time of generation. The file env.sh is also created which when sourced will add the current directory to your MU2E_SEARCH_PATH so that alignment files placed here are found by Offline.
 
-By default the alignment jobs are based on the MDC2020_best conditions, and various parts of the alignment can be overridden with text file configurations.
-Here, the Tracker plane misalignment is overwritten with the 'MT_MDC2018_Fix5_30' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied.
+Here, the Tracker plane misalignment is overwritten with 'MDC2020_startup' configuration. The corresponding DbService text file in `${TRKALIGN_BASE}/test/misalignments/` is copied. Then the remaining conditions are set to use purpose 'MDC2020_best' version 'v1_3'
 
-It's important to choose which planes to fix in the alignment, in order to suppress weak modes, such as a stretch or squeeze in z.
-Fixing planes 5, 30 to zero in all DOFs, for example. This means changing the values accordingly in `alignconstants_in.txt` for Plane 5 + 30, and ensuring that these parameters are set in `job.fcl`:
+Note that by default the weak modes are constrained to zero. You may also choose to fix specific planes instead, or set an uncertainty on the constraint by changing
 ```
-physics.analyzers.AlignTrackCollector.ConstrainStrategy : "Fix"
+physics.analyzers.AlignTrackCollector.WeakConstraints : "None/Fix/Measurement"
 physics.analyzers.AlignTrackCollector.FixPlane : [ 5, 30 ]
 
 ```
-
-You should also study the other defaults in `job.fcl` and tune the parameters according to your requirements.
-
 
 3. Run Track Collection + PEDE interactively
 

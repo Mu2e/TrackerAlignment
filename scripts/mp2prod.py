@@ -103,6 +103,20 @@ class AlignmentConstants:
 
         return int(obj_type), int(obj_id), int(obj_dof)
 
+    def read_initial_file(self, inputfile):
+        with open(inputfile, 'r') as f:
+            for line in f.readlines():
+                line = line.strip()
+                cols = line.split()
+                label, p, _ = cols[:3]
+                p = float(p)
+                obj_type, id, dof =  self.parse_label(label)
+
+                for table in self.tables.keys():
+                    if obj_type == self.tables[table].classid:
+                        self.tables[table].constants[id][dof]= p
+                        break
+
     def read_mp_file(self, inputfile):
         with open(inputfile, 'r') as f:
             for line in f.readlines():
@@ -122,7 +136,7 @@ class AlignmentConstants:
 
                 for table in self.tables.keys():
                     if obj_type == self.tables[table].classid:
-                        self.tables[table].constants[id][dof]= p
+                        self.tables[table].constants[id][dof] += p
                         self.tables[table].errors[id][dof] = perr
                         break
 
@@ -135,10 +149,12 @@ class AlignmentConstants:
 
 if __name__ == '__main__':
     input_file = 'millepede.res'
+    extra_file = 'mp-extra.txt'
 
     if len(sys.argv) > 1:
         input_file = sys.argv[1]
 
     consts = AlignmentConstants()
+    consts.read_initial_file(extra_file)
     consts.read_mp_file(input_file)
     print (consts.export_table())
