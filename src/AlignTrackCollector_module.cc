@@ -210,6 +210,9 @@ private:
   Float_t _ddrzpa[MAX_NHITS];
   Float_t _pull_hittime[MAX_NHITS];
   Float_t _doca[MAX_NHITS];
+  Float_t _deltax[MAX_NHITS];
+  Float_t _deltay[MAX_NHITS];
+  Float_t _deltaz[MAX_NHITS];
   Float_t _time[MAX_NHITS];
   Int_t _plane_uid[MAX_NHITS];
   Int_t _panel_uid[MAX_NHITS];
@@ -341,6 +344,9 @@ void AlignTrackCollector::beginJob() {
     _diagtree->Branch("pull_hittime", &_pull_hittime, "pull_hittime[nHits]/F");
 
     _diagtree->Branch("doca", &_doca, "doca[nHits]/F");
+    _diagtree->Branch("deltax", &_deltax, "deltax[nHits]/F");
+    _diagtree->Branch("deltay", &_deltay, "deltay[nHits]/F");
+    _diagtree->Branch("deltaz", &_deltaz, "deltaz[nHits]/F");
     _diagtree->Branch("time", &_time, "time[nHits]/F");
     _diagtree->Branch("plane", &_plane_uid, "plane[nHits]/I");
     _diagtree->Branch("panel", &_panel_uid, "panel[nHits]/I");
@@ -569,6 +575,9 @@ void AlignTrackCollector::analyze(art::Event const& event) {
         _residual_err[_nHits] = drift_res;
         _pull_hittime[_nHits] = time_resid/drift_res;
         _doca[_nHits] = pca.dca();
+        _deltax[_nHits] = (pca.point1()-pca.point2()).x();
+        _deltay[_nHits] = (pca.point1()-pca.point2()).y();
+        _deltaz[_nHits] = (pca.point1()-pca.point2()).z();
         _time[_nHits] = straw_hit.time();
         _plane_uid[_nHits] = straw_id.plane();
         _panel_uid[_nHits] = straw_id.uniquePanel();
@@ -843,19 +852,17 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
       continue;
     output_file << "Constraint   0" << std::endl;
     for (size_t pa=0;pa<StrawId::_npanels;pa++){
-      size_t p = pl*6+pa;
       if (!isDOFenabled(2, pl*StrawId::_npanels+pa, 1))
         continue;
-      StrawId tempid(p,pa,0);
-      output_file << getLabel(2, pl*strawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(xhat) << std::endl;
+      StrawId tempid(pl,pa,0);
+      output_file << getLabel(2, pl*StrawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(xhat) << std::endl;
     }
     output_file << "Constraint   0" << std::endl;
     for (size_t pa=0;pa<StrawId::_npanels;pa++){
-      size_t p = pl*6+pa;
       if (!isDOFenabled(2, pl*StrawId::_npanels+pa, 1))
         continue;
-      StrawId tempid(p,pa,0);
-      output_file << getLabel(2, pl*strawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(yhat) << std::endl;
+      StrawId tempid(pl,pa,0);
+      output_file << getLabel(2, pl*StrawId::_npanels+pa, 1) << "    " << nominalTracker.getPanel(tempid).vDirection().dot(yhat) << std::endl;
     }
   }
 
