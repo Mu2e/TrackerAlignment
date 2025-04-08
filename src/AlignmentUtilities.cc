@@ -219,4 +219,73 @@ numericalDerivatives(CosmicTimeTrack const& _track, StrawId const& straw,
   return {result_locals, result_globals};
 }
 
+std::pair<std::vector<double>, std::vector<double>>
+analyticDerivatives(StrawId const& straw_id,
+    TwoLinePCA const& pca,
+    Tracker const& nominalTracker,
+    StrawResponse const& strawRes,
+    bool useTimeDomain) {
+
+  std::vector<double> derivativesLocal;
+  std::vector<double> derivativesGlobal;
+
+  auto dca_dir = (pca.point2()-pca.point1()).unit();
+
+  //FIXME
+  double drift_time_p = strawRes.driftDistanceToTime(straw_id, pca.dca()+1e-5, 0) +
+    strawRes.driftTimeOffset(straw_id, pca.dca()+1e-5, 0);
+  double drift_time_n = strawRes.driftDistanceToTime(straw_id, pca.dca()-1e-5, 0) +
+    strawRes.driftTimeOffset(straw_id, pca.dca()-1e-5, 0);
+  auto drdx = (drift_time_p-drift_time_n)/(2*1e-5) * dca_dir;
+
+  double drdt = -1;
+  double drda0 = -drdx.x();
+  double drdb0 = -drdx.z();
+  double drda1 = pca.point2().y()*drdx.x();
+  double drdb1 = pca.point2().y()*drdx.z();
+
+  derivativesLocal.push_back(drda0);
+  derivativesLocal.push_back(drdb0);
+  derivativesLocal.push_back(drda1);
+  derivativesLocal.push_back(drdb1);
+  derivativesLocal.push_back(drdt);
+
+  const Panel& panel = nominalTracker.getPanel(straw_id);
+  const Plane& plane = nominalTracker.getPlane(straw_id);
+  std::vector<double> panelDerivs(6,0);
+  std::vector<double> planeDerivs(6,0);
+  // calculate derivative wrt alignment directions
+  panelDerivs[0] = panel.uDirection().dot(drdx);
+  panelDerivs[1] = panel.vDirection().dot(drdx);
+  panelDerivs[2] = panel.wDirection().dot(drdx);
+
+  auto panel_delta = pca.point2() - panel.origin();
+  panelDerivs[3] = panel.uDirection().cross(panel_delta).dot(drdx);
+  panelDerivs[4] = panel.vDirection().cross(panel_delta).dot(drdx);
+  panelDerivs[5] = panel.wDirection().cross(panel_delta).dot(drdx);
+
+  CLHEP::Hep3Vector plane_uDirection(1,0,0);
+  CLHEP::Hep3Vector plane_vDirection(0,1,0);
+  CLHEP::Hep3Vector plane_wDirection(0,0,1);
+  if (plane.planeToDS().rotation().getTheta() != 0){
+    plane_uDirection = CLHEP::Hep3Vector(-1,0,0);
+    plane_wDirection = CLHEP::Hep3Vector(0,0,-1);
+  }
+
+  planeDerivs[0] = plane_uDirection.dot(drdx); //plane.uDirection().dot(drdx);
+  planeDerivs[1] = plane_vDirection.dot(drdx); //plane.vDirection().dot(drdx);
+  planeDerivs[2] = plane_wDirection.dot(drdx); //plane.wDirection().dot(drdx);
+
+  auto plane_delta = pca.point2() - plane.origin();
+  planeDerivs[3] = plane_uDirection.cross(plane_delta).dot(drdx); //plane.uDirection().cross(plane_delta).dot(drdx);
+  planeDerivs[4] = plane_vDirection.cross(plane_delta).dot(drdx); //plane.vDirection().cross(plane_delta).dot(drdx);
+  planeDerivs[5] = plane_wDirection.cross(plane_delta).dot(drdx); //plane.wDirection().cross(plane_delta).dot(drdx);
+
+  for (size_t i=0;i<6;i++)
+    derivativesGlobal.push_back(planeDerivs[i]);
+  for (size_t i=0;i<6;i++)
+    derivativesGlobal.push_back(panelDerivs[i]);
+
+  return {derivativesLocal, derivativesGlobal};
+}
 } // namespace AlignmentUtilities

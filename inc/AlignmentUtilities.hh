@@ -98,4 +98,11 @@ numericalDerivatives(CosmicTimeTrack const& _track, StrawId const& straw,
                          StrawResponse const& strawRes, 
                          bool useTimeDomain = true);
 
+std::pair<std::vector<double>, std::vector<double>>
+analyticDerivatives(StrawId const& straw_id,
+    TwoLinePCA const& pca,
+    Tracker const& nominalTracker,
+    StrawResponse const& strawRes,
+    bool useTimeDomain = true); 
+
 } // namespace AlignmentUtilities
