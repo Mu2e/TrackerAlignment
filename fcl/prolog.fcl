@@ -12,8 +12,8 @@ AlignTrackCollector : {
     MinTrackSH : 20
     WeakConstraints : "Fix"
     PanelConstraints : false
-    WeakValues : []
-    WeakSigmas : []
+    WeakValues : [0,0,0,0,0,0]
+    WeakSigmas : [0,0,0,0,0,0]
     PanelValuesX : []
     PanelValuesY : []
     PanelValuesZ : []
@@ -34,6 +34,7 @@ AlignTrackCollector : {
     EnablePlaneRotationDOF : true
     EnablePanelTranslationDOF : false
     EnablePanelRotationDOF : false
+    FixPanelPerPlane : false
 
     GzipCompression : true
     SteeringOpts : []

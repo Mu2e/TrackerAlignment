@@ -42,6 +42,7 @@
 #include "art_root_io/TFileService.h"
 
 #include "Offline/TrackerConditions/inc/StrawResponse.hh"
+#include "Offline/TrackerConditions/inc/TrackerStatus.hh"
 #include "Offline/TrackerGeom/inc/Panel.hh"
 #include "Offline/TrackerGeom/inc/Plane.hh"
 #include "Offline/TrackerGeom/inc/Straw.hh"
@@ -115,6 +116,7 @@ public:
     fhicl::Atom<bool> enableplanerotation{ Name("EnablePlaneRotationDOF"), Comment("Fit for plane rotations")};
     fhicl::Atom<bool> enablepaneltranslation{ Name("EnablePanelTranslationDOF"), Comment("Fit for panel translations")};
     fhicl::Atom<bool> enablepanelrotation{ Name("EnablePanelRotationDOF"), Comment("Fit for panel rotations")};
+    fhicl::Atom<bool> fixpanelperplane{ Name("FixPanelPerPlane"), Comment("Fix single panel per plane to remove redundant DOF")};
 
     fhicl::Atom<std::string> weakconstraints{ Name("WeakConstraints"), Comment("Which weak constraint strategy to use. Either 'None', 'Fix', or 'Measurement'")};
     fhicl::Atom<bool> panelconstraints{       Name("PanelConstraints"), Comment("Whether to constrain each panel DOF")};
@@ -165,6 +167,7 @@ private:
   std::vector<bool> _fixedPlanes;
   std::vector<bool> _fixedPanels;
   bool _enablePlaneTranslationDOF, _enablePlaneRotationDOF, _enablePanelTranslationDOF, _enablePanelRotationDOF;
+  bool _fixPanelPerPlane;
 
   std::string _weakConstraints;
   bool _panelConstraints;
@@ -180,12 +183,14 @@ private:
   int _tracksWritten;
   std::vector<float> _startingAlignPlanes; 
   std::vector<float> _startingAlignPanels; 
+  std::vector<bool> _panelActive; //FIXME
 
   const CosmicTrackSeedCollection* _cscol;
   const Tracker* _nominalTracker;
 
   ProditionsHandle<Tracker> _alignedTracker_h;
-  ProditionsHandle<StrawResponse> srep_h;
+  ProditionsHandle<StrawResponse> _srep_h;
+  ProditionsHandle<TrackerStatus> _trackerStatus_h;
 
   std::unique_ptr<DbHandle<TrkAlignPlane>> _trkAlignPlane_h;
   std::unique_ptr<DbHandle<TrkAlignPanel>> _trkAlignPanel_h;
@@ -235,7 +240,7 @@ private:
   std::vector<double> fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal);
   bool isDOFenabled(int object_class, int object_id, int dof_n);
   bool isDOFfixed(int object_class, int object_id, int dof_n);
-  void cacheStartingParams(TrkAlignPlane const& alignConstPlanes, TrkAlignPanel const& alignConstPanels);
+  void cacheStartingParams(TrkAlignPlane const& alignConstPlanes, TrkAlignPanel const& alignConstPanels, TrackerStatus const& trackerStatus);
   void writeMillepedeConstraints(Tracker const& tracker);
   void writeMillepedeSteering();
   void writeMillepedeParams();
@@ -265,6 +270,7 @@ AlignTrackCollector::AlignTrackCollector(const Parameters& conf) :
   _enablePlaneRotationDOF(conf().enableplanerotation()),
   _enablePanelTranslationDOF(conf().enablepaneltranslation()),
   _enablePanelRotationDOF(conf().enablepanelrotation()),
+  _fixPanelPerPlane(conf().fixpanelperplane()),
   _weakConstraints(conf().weakconstraints()),
   _panelConstraints(conf().panelconstraints()),
   _weakValues(conf().weakvalues()),
@@ -393,14 +399,15 @@ void AlignTrackCollector::beginRun(art::Run const& run) {
 }
 
 void AlignTrackCollector::analyze(art::Event const& event) {
-  StrawResponse const& _srep = srep_h.get(event.id());
+  StrawResponse const& _srep = _srep_h.get(event.id());
   Tracker const& alignedTracker = _alignedTracker_h.get(event.id());
+  TrackerStatus const& trackerStatus = _trackerStatus_h.get(event.id());
 
   auto alignConsts_planes = _trkAlignPlane_h->get(event.id());
   auto alignConsts_panels = _trkAlignPanel_h->get(event.id());
 
   if (!_wroteMillepedeParams) {
-    cacheStartingParams(alignConsts_planes, alignConsts_panels);
+    cacheStartingParams(alignConsts_planes, alignConsts_panels, trackerStatus);
     _wroteMillepedeParams = true;
   }
 
@@ -819,6 +826,33 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
     }
   }
 
+  if (_fixPanelPerPlane || (_enablePanelTranslationDOF || _enablePanelRotationDOF)){
+    output_file << "! fixing one panel dof per plane" << std::endl;
+    // fix one full panel and v-translation of one panel at 90 degrees
+    for (size_t pl=0;pl<StrawId::_nplanes;pl++){
+      bool fixed = false;
+      for (size_t i=0;i<3;i++){
+        if (_panelActive[pl*StrawId::_npanels+i*2] && _panelActive[pl*StrawId::_npanels+i*2+1]){
+          for (size_t dof_n=0;dof_n<_dof_per_panel;dof_n++){
+            if (isDOFenabled(2, pl*StrawId::_npanels+i*2, dof_n)){
+              output_file << "Constraint   " << -1*_startingAlignPanels[(pl*StrawId::_npanels+i*2)*6 + dof_n] << std::endl;
+              output_file << getLabel(2,pl*StrawId::_npanels+i*2,dof_n) << "  1" << std::endl;
+            }
+          }
+          if (isDOFenabled(2, pl*StrawId::_npanels+i*2+1, 1)){
+            output_file << "Constraint   " << -1*_startingAlignPanels[(pl*StrawId::_npanels+i*2+1)*6 + 1] << std::endl;
+            output_file << getLabel(2,pl*StrawId::_npanels+i*2+1,1) << "  1" << std::endl;
+          }
+          fixed = true;
+          break;
+        }
+      }
+      if (!fixed){
+        std::cout << "AlignTrackCollector: Warning - unable to constrain redundant panel dofs in plane " << pl << std::endl;
+      }
+    }
+  }
+
   if (_panelConstraints){
     for (uint16_t p=0; p< StrawId::_nupanels; ++p){
       for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
@@ -1138,7 +1172,8 @@ void AlignTrackCollector::writeMillepedeExtras() {
 }
 
 void AlignTrackCollector::cacheStartingParams(TrkAlignPlane const& alignConstPlanes,
-                                               TrkAlignPanel const& alignConstPanels) {
+                                               TrkAlignPanel const& alignConstPanels,
+                                               TrackerStatus const& trackerStatus) {
   _startingAlignPlanes = std::vector<float>(StrawId::_nplanes*6,0);
   _startingAlignPanels = std::vector<float>(StrawId::_nupanels*6,0);
   for (uint16_t p = 0; p < StrawId::_nplanes; ++p) {
@@ -1158,6 +1193,23 @@ void AlignTrackCollector::cacheStartingParams(TrkAlignPlane const& alignConstPla
 
     for (size_t i=0;i<6;i++) 
       _startingAlignPanels[p*6+i] = pa_consts[i];
+  }
+  _panelActive = std::vector<bool>(StrawId::_nupanels,true);
+  static StrawStatus mask = StrawStatus(StrawStatus::absent) |
+    StrawStatus(StrawStatus::nowire) |
+    StrawStatus(StrawStatus::noHV) |
+    StrawStatus(StrawStatus::noLV) |
+    StrawStatus(StrawStatus::nogas) |
+    StrawStatus(StrawStatus::lowgasgain) |
+    StrawStatus(StrawStatus::noHVPreamp) |
+    StrawStatus(StrawStatus::noCalPreamp) |
+    StrawStatus(StrawStatus::disabled);
+  for (size_t pl=0;pl<StrawId::_nplanes;pl++){
+    for (size_t pa=0;pa<StrawId::_npanels;pa++){
+      if (trackerStatus.panelStatus(StrawId(pl,pa,0)).hasAnyProperty(mask)){
+        _panelActive[pl*StrawId::_npanels+pa] = false;
+      }
+    }
   }
 }
 
