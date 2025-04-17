@@ -99,6 +99,7 @@ class AlignmentSet:
             self.wanglerms = np.std(panel_data[:,5])
 
         if "TrkAlignStraw" in self.tables:
+            straw_data = self.tables["TrkAlignStraw"].constants.copy()
             self.strawvrms = np.std(np.concatenate([straw_data[:,4],straw_data[:,6]]))
             self.strawvrms = np.std(np.concatenate([straw_data[:,5],straw_data[:,7]]))
             if "TrkAlignStrawSim" in self.tables:

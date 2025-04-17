@@ -237,7 +237,7 @@ private:
   int getLabel(int const&, int const&, int const&);
   std::vector<int> generateDOFLabels(uint16_t plane, uint16_t panel);
   std::vector<int> generateDOFLabels(StrawId const& strw);
-  std::vector<double> fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal);
+  std::vector<double> pruneInactiveGlobals(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal);
   bool isDOFenabled(int object_class, int object_id, int dof_n);
   bool isDOFfixed(int object_class, int object_id, int dof_n);
   void cacheStartingParams(TrkAlignPlane const& alignConstPlanes, TrkAlignPanel const& alignConstPanels, TrackerStatus const& trackerStatus);
@@ -500,7 +500,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
 
       for (size_t i=0;i<derivativesGlobal.size();i++)
         derivativesGlobal[i] *= -1;
-      std::vector<double> derivativesGlobalFixed = fixDerivativesGlobal(straw_id.getPlane(), straw_id.uniquePanel(), derivativesGlobal);
+      std::vector<double> derivativesGlobalPruned = pruneInactiveGlobals(straw_id.getPlane(), straw_id.uniquePanel(), derivativesGlobal);
 
       planes_traversed.insert(plane_id);
       panels_traversed.insert(panel_id);
@@ -516,7 +516,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
 
       std::vector<int> labels = generateDOFLabels(straw_id);
 
-      if (labels.size() != derivativesGlobalFixed.size()) {
+      if (labels.size() != derivativesGlobalPruned.size()) {
         throw cet::exception("RECO") << "N global derivatives != N labels"
           << " ... Something is wrong!";
       }
@@ -525,7 +525,7 @@ void AlignTrackCollector::analyze(art::Event const& event) {
       residuals.emplace_back(time_resid);
       residual_errs.emplace_back(drift_res);
 
-      global_derivs_temp.emplace_back(derivativesGlobalFixed);
+      global_derivs_temp.emplace_back(derivativesGlobalPruned);
       local_derivs_temp.emplace_back(derivativesLocal);
       labels_temp.push_back(labels);
 
@@ -690,23 +690,23 @@ std::vector<int> AlignTrackCollector::generateDOFLabels(uint16_t plane, uint16_t
   return labels;
 }
 
-std::vector<double> AlignTrackCollector::fixDerivativesGlobal(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal) {
-  std::vector<double> fixedDerivativesGlobal;
+std::vector<double> AlignTrackCollector::pruneInactiveGlobals(uint16_t plane, uint16_t panel, std::vector<double> &derivativesGlobal) {
+  std::vector<double> prunedDerivativesGlobal;
   size_t index = 0;
   for (size_t dof_n = 0; dof_n < _dof_per_plane; dof_n++) {
     if (isDOFenabled(1, plane, dof_n)) {
-      fixedDerivativesGlobal.push_back(derivativesGlobal[index]);
+      prunedDerivativesGlobal.push_back(derivativesGlobal[index]);
     }
     index++;
   }
   for (size_t dof_n = 0; dof_n < _dof_per_panel; dof_n++) {
     if (isDOFenabled(2, panel, dof_n)) {
-      fixedDerivativesGlobal.push_back(derivativesGlobal[index]);
+      prunedDerivativesGlobal.push_back(derivativesGlobal[index]);
     }
     index++;
   }
   
-  return fixedDerivativesGlobal;
+  return prunedDerivativesGlobal;
 }
 
 bool AlignTrackCollector::isDOFenabled(int object_class, int object_id, int dof_n) {
@@ -834,12 +834,12 @@ void AlignTrackCollector::writeMillepedeConstraints(Tracker const& nominalTracke
       for (size_t i=0;i<3;i++){
         if (_panelActive[pl*StrawId::_npanels+i*2] && _panelActive[pl*StrawId::_npanels+i*2+1]){
           for (size_t dof_n=0;dof_n<_dof_per_panel;dof_n++){
-            if (isDOFenabled(2, pl*StrawId::_npanels+i*2, dof_n)){
+            if (isDOFenabled(2, pl*StrawId::_npanels+i*2, dof_n) && !isDOFfixed(2, pl*StrawId::_npanels+i*2, dof_n)){
               output_file << "Constraint   " << -1*_startingAlignPanels[(pl*StrawId::_npanels+i*2)*6 + dof_n] << std::endl;
               output_file << getLabel(2,pl*StrawId::_npanels+i*2,dof_n) << "  1" << std::endl;
             }
           }
-          if (isDOFenabled(2, pl*StrawId::_npanels+i*2+1, 1)){
+          if (isDOFenabled(2, pl*StrawId::_npanels+i*2+1, 1) && !isDOFfixed(2, pl*StrawId::_npanels+i*2+1, 1)){
             output_file << "Constraint   " << -1*_startingAlignPanels[(pl*StrawId::_npanels+i*2+1)*6 + 1] << std::endl;
             output_file << getLabel(2,pl*StrawId::_npanels+i*2+1,1) << "  1" << std::endl;
           }
