@@ -7,27 +7,9 @@ fi
 export TRKALIGN_BASE=`cd "$(dirname ${BASH_SOURCE})" >/dev/null 2>&1 && /bin/pwd`
 
 export TRKALIGN_SCRIPTS_DIR="${TRKALIGN_BASE}/scripts"
-export NOFIELD_DATASET="dig.mu2e.CosmicCRYExtractedCatDigiTrk.MDC2020y_best_v1_1.art"
+export NOFIELD_DATASET="dig.mu2e.CosmicCRYExtractedCatTriggered.MDC2020ae_best_v1_3.art"
 
 setup millepede
-
-if [ ! -f "${TRKALIGN_BASE}/.no-venv" ]; then
-    if [ ! -d "${TRKALIGN_BASE}/.venv" ]; then
-        echo "Creating virtual environment at ${TRKALIGN_BASE}/.venv"
-        python -m venv ${TRKALIGN_BASE}/.venv 
-        source ${TRKALIGN_BASE}/.venv/bin/activate
-
-        python -m pip install -r ${TRKALIGN_BASE}/scripts/requirements.txt
-    else
-        echo "Sourcing virtual environment at ${TRKALIGN_BASE}/.venv"
-        source ${TRKALIGN_BASE}/.venv/bin/activate
-    fi
-else
-    echo "Skipped virtual environment setup."
-fi
-# set up some convenience commands 
-
-alias aligntrack_display='python ${TRKALIGN_SCRIPTS_DIR}/aligntrack_display.py ' 
 
 function mu2ealign_genparallel() {
     rm job_part*.fcl > /dev/null
@@ -43,6 +25,7 @@ function mu2ealign_genparallel() {
         sed -i "s/mp-steer.txt/mp-steer.txt.${i}/g" job_part$i.fcl
         sed -i "s/mp-constr.txt/mp-constr.txt.${i}/g" job_part$i.fcl
         sed -i "s/mp-params.txt/mp-params.txt.${i}/g" job_part$i.fcl
+        sed -i "s/mp-extra.txt/mp-extra.txt.${i}/g" job_part$i.fcl
         sed -i "s/TrackDiag.root/TrackDiag.root.${i}/g" job_part$i.fcl
 
         split --number=$i/$nparts -d sources.txt.tmp > sources_job_part${i}.txt
@@ -115,14 +98,22 @@ function mu2ealign_mergeoutput() {
     else
         echo "TrackDiag.root already exists - skip"
     fi
+
+    if [ ! -f "mp-extra.txt" ]; then
+      cp mp-extra.txt.1 mp-extra.txt
+    fi
 }
 
 function mu2ealign_genjobfcl() {
     cp ${TRKALIGN_BASE}/fcl/job_template.fcl job.fcl
+    echo "services.DbService.purpose: $1" >> job.fcl
+    echo "services.DbService.version: $2" >> job.fcl
+    echo "services.DbService.verbose : 2" >> job.fcl
+
     echo "Generated new job.fcl!"
-    echo "Using ${NOFIELD_DATASET} as dataset. (first 8 files)"
+    echo "Using $3 as dataset. (first 8 files)"
     echo "Please change sources.txt if you want to use something else."
-    mu2eDatasetFileList ${NOFIELD_DATASET} | head -n 8 > sources.txt
+    mu2eDatasetFileList $3 | head -n 8 > sources.txt
 }
 
 function mu2ealign_progress() {
@@ -230,15 +221,21 @@ function mu2ealign() {
             return 1
         fi
 
-        if [ -z "$2" ]; then 
+        if [ -z "$4" ]; then 
             echo "usage: "
-            echo "$ mu2ealign new <alignment constants file>"
+            echo "$ mu2ealign new <alignment constants file> <db purpose> <db version> [dataset]"
             return 1
         fi
 
         # generate a working directory in CWD
         # the job uses the alignment constants file in $2
         ALIGN_CONST_FILE=$2
+        DB_PURPOSE=$3
+        DB_VERSION=$4
+        DATASET=${NOFIELD_DATASET}
+        if [ ! -z "$5" ]; then
+            DATASET=$5
+        fi
 
         if [ ! -f "${ALIGN_CONST_FILE}" ]; then
             TESTFILE="${TRKALIGN_BASE}/test/misalignments/$2.txt"
@@ -267,7 +264,7 @@ function mu2ealign() {
 
             echo "Copied previous job configuration!"
         else
-            mu2ealign_genjobfcl
+            mu2ealign_genjobfcl ${DB_PURPOSE} ${DB_VERSION} ${DATASET}
         fi
 
 

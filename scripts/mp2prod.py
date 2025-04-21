@@ -49,7 +49,7 @@ class AlignmentTable:
     def to_proditions_table(self):
         lines = []
         for i, constants in enumerate(self.constants):
-            lines.append('%d,' % i + self.strawId(i) + ',' +  ','.join([str(i) for i in constants]))
+            lines.append('%5d, %9s' % (i,self.strawId(i)) + ',' +  ','.join(['%10.6f' % i for i in constants]))
         return """TABLE {name}
 {csv}
 
@@ -67,6 +67,7 @@ class AlignmentConstants:
                 'TrkAlignPlane': AlignmentTable('TrkAlignPlane', 1, 36, 6, 6*96), 
                 'TrkAlignPanel': AlignmentTable('TrkAlignPanel', 2, 216, 6, 96),
                 'TrkAlignStraw': AlignmentTable('TrkAlignStraw', 3, 20736, 8, 1)}
+        self.usetable = {table : False for table in self.tables}
                 
 
     def read_db_file(self, input_file):
@@ -103,6 +104,20 @@ class AlignmentConstants:
 
         return int(obj_type), int(obj_id), int(obj_dof)
 
+    def read_initial_file(self, inputfile):
+        with open(inputfile, 'r') as f:
+            for line in f.readlines():
+                line = line.strip()
+                cols = line.split()
+                label, p, _ = cols[:3]
+                p = float(p)
+                obj_type, id, dof =  self.parse_label(label)
+
+                for table in self.tables.keys():
+                    if obj_type == self.tables[table].classid:
+                        self.tables[table].constants[id][dof]= p
+                        break
+
     def read_mp_file(self, inputfile):
         with open(inputfile, 'r') as f:
             for line in f.readlines():
@@ -122,23 +137,27 @@ class AlignmentConstants:
 
                 for table in self.tables.keys():
                     if obj_type == self.tables[table].classid:
-                        self.tables[table].constants[id][dof]= p
+                        self.tables[table].constants[id][dof] += p
                         self.tables[table].errors[id][dof] = perr
+                        self.usetable[table] = True
                         break
 
     def export_table(self):
         with io.StringIO() as f:
-            for table in self.tables.values():
-                f.write(table.to_proditions_table())
+            for table in self.tables:
+                if self.usetable[table]:
+                    f.write(self.tables[table].to_proditions_table())
             return f.getvalue()
 
 
 if __name__ == '__main__':
     input_file = 'millepede.res'
+    extra_file = 'mp-extra.txt'
 
     if len(sys.argv) > 1:
         input_file = sys.argv[1]
 
     consts = AlignmentConstants()
+    consts.read_initial_file(extra_file)
     consts.read_mp_file(input_file)
     print (consts.export_table())
